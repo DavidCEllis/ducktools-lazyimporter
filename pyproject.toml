@@ -1,0 +1,33 @@
+[build-system]
+requires = [
+    "setuptools",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="lazy_importer"
+description="Context manager that makes imports lazy"
+authors = [
+  { name="David C Ellis" },
+]
+readme="README.md"
+requires-python = ">=3.10"
+dependencies = []
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+dynamic = ['version']
+
+[project.optional-dependencies]
+TEST = ["pytest"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.dynamic]
+version = {attr = "lazy_importer.__version__"}
+
