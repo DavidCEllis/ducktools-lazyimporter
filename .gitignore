@@ -10,5 +10,6 @@ build/
 _build/
 dist/
 
+.vscode/
 __pycache__/
 *.pyc
