@@ -11,3 +11,6 @@ _build/
 dist/
 perftemp.py
 hyperfine_testfiles/
+
+__pycache__/
+*.pyc
