@@ -6,13 +6,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name="lazy_importer"
-description="Context manager that makes imports lazy"
+description="Source to source converter to convert a context block of imports to be lazy."
 authors = [
   { name="David C Ellis" },
 ]
 readme="README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["prefab-classes", "libcst"]
 classifiers = [
     "Development Status :: 1 - Planning",
     "Programming Language :: Python :: 3.10",
