@@ -1,6 +1,7 @@
 """
 Hack the AST to convert regular imports into delayed imports.
 """
+import os
 
 from . import _ast_vendor as ast
 from . import CTXMAN_NAME
@@ -139,7 +140,14 @@ class LazyImports:
         return LazyImports(module_imports, from_imports, lazy_containers)
 
 
-def hack_ast(src):
+def hack_ast(src: str) -> ast.tree:
+    """
+    Parse the source code string into an AST and replace imports within a lazy_import block
+    with delayed imports using module level `__getattr__`.
+
+    :param src: Source code as string.
+    :return: AST tree with lazy imports in place.
+    """
     tree = ast.parse(src)
 
     containers = LazyImports.from_tree(tree)
@@ -156,3 +164,15 @@ def hack_ast(src):
     ast.fix_missing_locations(tree)
 
     return tree
+
+
+def rewrite_source(src_path: str | os.pathlike, dest_path: str | os.pathlike):
+    """
+    Rewrite source code to use lazy imports using 
+
+    :param src_path: _description_
+    :param dest_path: _description_
+    :raises ValueError: _description_
+    """
+    if src_path == dest_path:
+        raise ValueError("Source must be different to destination.")
