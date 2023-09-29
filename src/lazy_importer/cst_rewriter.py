@@ -1,6 +1,7 @@
 """
 Rewrite a python file to use lazy imports.
 """
+import os
 import itertools
 import libcst as cst
 import libcst.matchers as matchers
@@ -223,3 +224,61 @@ def make_imports_lazy(src: str) -> str:
     new_module = new_module.visit(CleanupLazyImporters())
 
     return new_module.code
+
+
+def rewrite_source_to_file(
+    src: str | os.PathLike,
+    dest: str | os.PathLike,
+    *,
+    overwrite: bool = False,
+) -> None:
+    """
+    Rewrite src python script to convert lazy_import blocks to __getattr__ lazy imports
+    output the new code to dest.
+
+    :param src: _description_
+    :param dest: _description_
+    """
+    from pathlib import Path
+
+    src = Path(src)
+    dest = Path(dest)
+
+    if not overwrite:
+        if src == dest:
+            raise ValueError("Source path must be different to destination path.")
+        elif dest.exists():
+            raise ValueError(
+                "Destination path must not exist or overwrite=True must be used"
+            )
+
+    dest.write_text(make_imports_lazy(src.read_text()))
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="Lazy Importer Source Rewriter",
+        description="Rewrite a source file to convert lazy_importer blocks into functional __getattr__ based lazy imports.",
+        epilog=">:V",
+    )
+    parser.add_argument(
+        "source_file", help="Python source file path with lazy_import blocks."
+    )
+    parser.add_argument("destination_file", help="Output source file path.")
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Allow overwriting of the destination file",
+    )
+
+    args = parser.parse_args()
+
+    source_file = args.source_file
+    destination_file = args.destination_file
+    overwrite = args.overwrite
+
+    rewrite_source_to_file(source_file, destination_file, overwrite=overwrite)
+
+    print(f"Written modified source to {destination_file}")
