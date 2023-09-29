@@ -51,7 +51,7 @@ def {func_name}(name):
                 setattr(this_module, alias, module)
                 return module
             case (module_name, from_name, alias):
-                module = importlib.import_module(module_name)
+                module = importlib.import_module(module_name, package=__name__)
                 obj = getattr(module, from_name)
                 setattr(this_module, alias, obj)
                 return obj
@@ -138,6 +138,9 @@ class GatherImports(cst.CSTVisitor):
 
     def visit_ImportFrom(self, node: cst.ImportFrom):
         module_name = get_node_fullname(node.module)
+        relative = "".join("." for item in node.relative if isinstance(item, cst.Dot))
+
+        module_name = f"{relative}{module_name}"
 
         for attrib in node.names:
             attrib_name = attrib.name.value
