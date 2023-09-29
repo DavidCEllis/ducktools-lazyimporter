@@ -11,6 +11,8 @@ Write a block with a `lazy_importer`:
 
 example.py
 ```python
+import os
+
 from lazy_importer import lazy_importer
 
 with lazy_importer():
@@ -30,6 +32,7 @@ python -m lazy_importer example.py example_output.py
 
 example_output.py
 ```python
+import os
 _LAZY_IMPORTS = {
     'slow_submodule1': ('this_module.slow_submodule1', 'slow_submodule1'), 
     'useful_function1': ('.slow_submodule2', 'useful_function1', 'useful_function1'), 
@@ -71,6 +74,7 @@ def __getattr__(name):
         )
 
 __all__ = ["useful_function1", "useful_function2"]
+
 ```
 
 ## Additional Usage Notes ##
