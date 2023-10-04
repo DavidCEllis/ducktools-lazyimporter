@@ -13,15 +13,17 @@ CTXMAN_NAME = "lazy_importer"
 IMPORT_DICT_NAME = "_LAZY_IMPORTS"
 
 
-def getattr_func(
-    import_dict: str, module_tree: cst.Module, *, func_name="__getattr__"
+def get_lazy_funcs(
+    import_dict: str,
+    attr_names: list[str],
+    module_tree: cst.Module,
 ) -> tuple[cst.CSTNode]:
     """
     Generate the CST for the getattr function to handle lazy loading
 
+    :param import_dict: Source code of dictionary of {attrib_name: (module, alias) | (module, attrib, alias)}
+    :param attr_names: List of new attribute names
     :param module_tree: CST module object to use as config
-    :param func_name: name of the getattr function - could be necessary if
-                      a getattr function is already defined.
     :return: CST getattr function to be inserted into the new module body
     """
 
@@ -29,7 +31,7 @@ def getattr_func(
         f"""
 {import_dict}
 
-def {func_name}(name):
+def __getattr__(name):
     \"\"\"
     Lazy importer __getattr__ function
     
@@ -61,7 +63,15 @@ def {func_name}(name):
     except (KeyError, AttributeError):
         raise AttributeError(
             f"Module {{__name__}} has no attribute {{name!r}}."
-        )          
+        )
+
+def __dir__():
+    import sys
+    this_module = sys.modules[__name__]
+    old_dir = this_module.__dict__.keys()
+    new_items = {attr_names!r}
+    return sorted({{*old_dir, *new_items}})
+
     """
     ).strip()
 
@@ -83,6 +93,10 @@ class LazyImports:
     module_imports: list[tuple[str, str]]
     from_imports: list[tuple[str, str, str]]
     original_containers: list[cst.With]
+
+    @property
+    def attr_names(self):
+        return [item[-1] for item in itertools.chain(self.module_imports, self.from_imports)]
 
     @property
     def import_dict(self) -> str:
@@ -109,14 +123,17 @@ class LazyImports:
             container.visit(visitor)
 
         return LazyImports(
-            visitor.module_imports, visitor.from_imports, lazy_containers
+            visitor.module_imports,
+            visitor.from_imports,
+            lazy_containers,
         )
 
 
 class GatherImports(cst.CSTVisitor):
     def __init__(self):
-        self.module_imports = []
-        self.from_imports = []
+        super().__init__()
+        self.module_imports: list[tuple[str, str]] = []
+        self.from_imports: list[tuple[str, str, str]] = []
 
     def visit_Import(self, node: cst.Import):
         for alias in node.names:
@@ -207,8 +224,9 @@ def make_imports_lazy(src: str) -> str:
     module = cst.parse_module(src)
     imps = LazyImports.from_tree(module)
 
-    lazy_mechanism = getattr_func(
+    lazy_mechanism = get_lazy_funcs(
         import_dict=imps.import_dict,
+        attr_names=imps.attr_names,
         module_tree=module,
     )
 
