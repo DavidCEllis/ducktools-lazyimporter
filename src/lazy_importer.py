@@ -12,7 +12,7 @@ class ModuleImport:
 
     @property
     def module_basename(self):
-        return self.module_name.partition(".")[0]
+        return self.module_name.split(".")[0]
 
     def __init__(self, module_name, asname=None):
         self.module_name = module_name
@@ -39,7 +39,7 @@ class FromImport:
 
     @property
     def module_basename(self):
-        return self.module_name.partition(".")[0]
+        return self.module_name.split(".")[0]
 
     def __init__(self, module_name, attrib_name, asname=None):
         self.module_name = module_name
@@ -71,47 +71,49 @@ def lazy_importer(modules: list[ModuleImport | FromImport]):
 
 
 def _make_module_import(base_module: str, submodules: set[str]) -> str:
-    submodule_imports = "\n            ".join(f"import {module}" for module in submodules)
+    submodule_imports = "\n        ".join(f"import {module}" for module in submodules)
 
     src = (
-        f"    @property\n"
+        f"    @cached_property\n"
         f"    def {base_module}(self):\n"
-        f"        try:\n"
-        f"            return self._deferred_{base_module}\n"
-        f"        except AttributeError:\n"
-        f"            {submodule_imports}\n"
-        f"            self._deferred_{base_module} = {base_module}\n"
-        f"            return {base_module}\n"
+        f"        {submodule_imports}\n"
+        f"        return {base_module}\n"
     )
     return src
 
 
 def _make_module_import_asname(module_name: str, asname: str) -> str:
     src = (
-        f"    @property\n"
+        f"    @cached_property\n"
         f"    def {asname}(self):\n"
-        f"        try:\n"
-        f"            return self._deferred_{asname}\n"
-        f"        except AttributeError:\n"
-        f"            import {module_name}\n"
-        f"            self._deferred_{asname} = {module_name}\n"
-        f"            return {asname}\n"
+        f"        import {module_name}\n"
+        f"        return {module_name}\n"
     )
     return src
 
 
 def _make_from_import(module_name: str, attrib: str, asname: str) -> str:
     src = (
-        f"    @property\n"
+        f"    @cached_property\n"
         f"    def {asname}(self):\n"
-        f"        try:\n"
-        f"            return self._deferred_{asname}\n"
-        f"        except AttributeError:\n"
-        f"            from {module_name} import {attrib} as {asname}\n"
-        f"            self._deferred_{asname} = {asname}\n"
-        f"            return {asname}\n"
+        f"        from {module_name} import {attrib}\n"
+        f"        return {attrib}\n"
     )
     return src
+
+
+class _cached_property:  # noqa
+    """Drastically simplified cached_property for this use case"""
+    def __init__(self, func):
+        self.func = func
+
+    def __set_name__(self, owner, name):
+        self.asname = name
+
+    def __get__(self, instance, owner):
+        result = self.func(instance)
+        setattr(instance, self.asname, result)
+        return result
 
 
 class LazyImporterMaker:
@@ -186,6 +188,10 @@ class LazyImporterMaker:
         return class_def
 
     def get_lazy_importer_object(self):
-        globs = {"ModuleImport": ModuleImport, "FromImport": FromImport}
+        globs = {
+            "ModuleImport": ModuleImport,
+            "FromImport": FromImport,
+            "cached_property": _cached_property
+        }
         exec(self.get_lazy_class_source(), globs)
         return globs[self.classname]()
