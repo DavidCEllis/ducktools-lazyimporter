@@ -177,10 +177,10 @@ class LazyImporterMaker:
             f"class {self.classname}:\n"
             f"    IMPORT_DETAILS = {self.imports!r}\n"
             f"    def __dir__(self):\n"
-            f"        return [\n"
+            f"        return sorted({{\n"
             f"            item.asname if item.asname else item.module_basename\n"
             f"            for item in self.IMPORT_DETAILS\n"
-            f"        ]\n"
+            f"        }})\n"
             f"\n"
             f"{complete_imports}\n"
         )
