@@ -119,6 +119,7 @@ class MultiFromImport:
 
     Must be converted into FromImport objects inside the lazyimporter
     """
+
     module_name: str
     attrib_names: list[str | tuple[str, str]]
 
@@ -140,6 +141,7 @@ class _SubmoduleImports(_ImportBase):
     """
     Internal class to handle submodules
     """
+
     module_name: str
     submodules: set[str]
 
@@ -157,7 +159,10 @@ class _SubmoduleImports(_ImportBase):
 
     def __eq__(self, other):
         if self.__class__ is other.__class__:
-            return (self.module_name, self.submodules) == (other.module_name, other.submodules)
+            return (self.module_name, self.submodules) == (
+                other.module_name,
+                other.submodules,
+            )
         return NotImplemented
 
     def do_import(self):
@@ -196,8 +201,7 @@ class LazyImporter:
                         importer = _SubmoduleImports(imp.module_basename)
                     else:
                         importer = _SubmoduleImports(
-                            imp.module_basename,
-                            {imp.module_name}
+                            imp.module_basename, {imp.module_name}
                         )
                     self._importers[imp.module_basename] = importer
                 else:
@@ -215,7 +219,7 @@ class LazyImporter:
                 )
 
     @staticmethod
-    def _unpack_imports(imports):
+    def _unpack_imports(imports: list[ModuleImport | FromImport | MultiFromImport]):
         # Helper function to unpack MultiFromImport objects
         # into FromImports
         for imp in imports:
