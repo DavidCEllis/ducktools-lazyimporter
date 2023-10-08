@@ -1,4 +1,6 @@
-from lazy_importer import ModuleImport, FromImport, LazyImporterMaker
+from lazy_importer import (
+    ModuleImport, FromImport, LazyImporter, _SubmoduleImports, MultiFromImport
+)
 
 
 def test_equal_module():
@@ -13,54 +15,55 @@ def test_equal_module():
 
 
 def test_no_duplication():
-    importer_maker = LazyImporterMaker([
+    importer = LazyImporter([
         ModuleImport("collections"),
         ModuleImport("collections")
     ])
 
-    plain, _, _ = importer_maker._sort_imports()
-
-    assert plain == {"collections": {"collections"}}
+    assert dir(importer) == ["collections"]
+    assert importer._importers == {"collections": _SubmoduleImports("collections")}
 
 
 def test_submodule_gather():
-    importer_maker = LazyImporterMaker([
+    importer = LazyImporter([
         ModuleImport("collections.abc"),
     ])
 
-    plain, _, _ = importer_maker._sort_imports()
+    assert dir(importer) == ["collections"]
 
-    assert plain == {
-        "collections": {"collections", "collections.abc"}
+    assert importer._importers == {
+        "collections":  _SubmoduleImports("collections", {"collections.abc"})
     }
 
 
 def test_asname_gather():
-    importer_maker = LazyImporterMaker([
+    importer = LazyImporter([
         ModuleImport("collections.abc", "abc"),
     ])
 
-    _, asname, _ = importer_maker._sort_imports()
+    assert dir(importer) == ["abc"]
+    assert importer._importers == {
+        "abc": ModuleImport("collections.abc", "abc")
+    }
 
-    assert asname == [ModuleImport("collections.abc", "abc")]
 
 
 def test_from_gather():
-    importer_maker = LazyImporterMaker([
+    importer = LazyImporter([
         FromImport("dataclasses", "dataclass"),
         FromImport("dataclasses", "dataclass", "dc")
     ])
 
-    _, _, from_imports = importer_maker._sort_imports()
+    assert dir(importer) == ["dataclass", "dc"]
 
-    assert from_imports == [
-        FromImport("dataclasses", "dataclass"),
-        FromImport("dataclasses", "dataclass", "dc")
-    ]
+    assert importer._importers == {
+        "dataclass": FromImport("dataclasses", "dataclass"),
+        "dc": FromImport("dataclasses", "dataclass", "dc"),
+    }
 
 
 def test_mixed_gather():
-    importer_maker = LazyImporterMaker([
+    importer = LazyImporter([
         ModuleImport("collections"),
         ModuleImport("collections.abc"),
         ModuleImport("functools", "ft"),
@@ -68,31 +71,30 @@ def test_mixed_gather():
         FromImport("typing", "NamedTuple", "nt"),
     ])
 
-    plain, asname, from_ = importer_maker._sort_imports()
+    assert dir(importer) == ["collections", "dataclass", "ft", "nt"]
 
-    assert plain == {
-        "collections": {"collections", "collections.abc"}
+    assert importer._importers == {
+        "collections": _SubmoduleImports("collections", {"collections.abc"}),
+        "dataclass": FromImport("dataclasses", "dataclass"),
+        "ft": ModuleImport("functools", "ft"),
+        "nt": FromImport("typing", "NamedTuple", "nt")
     }
 
-    assert asname == [ModuleImport("functools", "ft")]
 
-    assert from_ == [
-        FromImport("dataclasses", "dataclass"),
-        FromImport("typing", "NamedTuple", "nt")
-    ]
-
-
-def test_dir():
-    importer_maker = LazyImporterMaker([
-        ModuleImport("collections"),
-        ModuleImport("collections.abc"),
-        ModuleImport("functools", "ft"),
-        FromImport("dataclasses", "dataclass"),
-        FromImport("typing", "NamedTuple", "nt"),
+def test_multi_from():
+    importer = LazyImporter([
+        MultiFromImport(
+            "collections", ["defaultdict", ("namedtuple", "nt"), "OrderedDict"]
+        ),
+        FromImport("Functools", "partial"),
+        ModuleImport("importlib.util"),
     ])
 
-    laz = importer_maker.get_lazy_importer_object()
+    assert dir(importer) == sorted([
+        "defaultdict", "nt", "ordereddict", "partial", "importlib"
+    ])
 
-    assert sorted(dir(laz)) == sorted(
-        ["collections", "ft", "dataclass", "nt"]
-    )
+    assert importer._importers == {
+        "defaultdict": FromImport("collections", "defaultdict"),
+        "nt": FromImport("collections")
+    }

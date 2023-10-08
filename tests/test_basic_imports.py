@@ -2,11 +2,11 @@ import sys
 
 import pytest
 
-from lazy_importer import lazy_importer, ModuleImport, FromImport
+from lazy_importer import LazyImporter, ModuleImport, FromImport
 
 
 def test_imports_lazy():
-    laz = lazy_importer([
+    laz = LazyImporter([
         ModuleImport("example_1"),
         FromImport("example_2", "item", asname="i"),
     ])
@@ -21,13 +21,20 @@ def test_imports_lazy():
 
     assert laz.i == "example"
 
+    # Check the imports are the correct objects
+    import example_1  # noqa
+    import example_2  # noqa
+
+    assert example_1 is laz.example_1
+    assert example_2.item is laz.i
+
 
 def test_imports_submod():
-    laz_nosub = lazy_importer([
+    laz_nosub = LazyImporter([
         ModuleImport("ex_mod")
     ])
 
-    laz_sub = lazy_importer([
+    laz_sub = LazyImporter([
         ModuleImport("ex_mod.ex_submod")
     ])
 
