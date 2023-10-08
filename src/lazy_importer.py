@@ -65,6 +65,32 @@ class FromImport:
         return NotImplemented
 
 
+class _SubmoduleImports:
+    """
+    Internal class to handle submodules
+    """
+    module_name: str
+    submodules: list[str]
+
+    def __init__(self, module_name, submodules):
+        self.module_name = module_name
+        self.submodules = submodules
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}("
+            f"module_name={self.module_name!r}, "
+            f"submodules={self.submodules!r}"
+            f")"
+        )
+
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return (self.module_name, self.submodules) == (other.module_name, other.submodules)
+        return NotImplemented
+
+
+
 def lazy_importer(modules: list[ModuleImport | FromImport]):
     importer = LazyImporterMaker(modules)
     return importer.get_lazy_importer_object()
@@ -195,3 +221,18 @@ class LazyImporterMaker:
         }
         exec(self.get_lazy_class_source(), globs)
         return globs[self.classname]()
+
+
+class LazyImporter:
+    def __init__(self, imports):
+        # Keep original imports for __repr__
+        self._imports = imports
+
+    def __getattr__(self, name):
+        pass
+
+    def __dir__(self):
+        return []
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(imports={self._imports!r})"
