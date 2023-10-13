@@ -14,15 +14,33 @@ class _ImportBase(abc.ABC):
 
     @property
     def module_basename(self):
+        """
+        Get the first part of a module import name.
+        eg: 'importlib' from 'importlib.util'
+
+        :return: name of base module
+        :rtype: str
+        """
         return self.module_name.split(".")[0]
 
     @property
     def submodule_names(self):
+        """
+        Get a list of all submodule names in order.
+        eg: ['util'] from 'importlib.util'
+        :return: List of submodule names.
+        :rtype: list[str]
+        """
         return self.module_name.split(".")[1:]
 
     @abc.abstractmethod
     def do_import(self):
-        pass
+        """
+        Perform the imports defined and return a dictionary.
+
+        :return: dict of {name: imported_object, ...} for all names
+        :rtype: dict[str, typing.Any]
+        """
 
 
 class ModuleImport(_ImportBase):
@@ -30,6 +48,15 @@ class ModuleImport(_ImportBase):
     asname: None | str
 
     def __init__(self, module_name, asname=None):
+        """
+        Equivalent to `import <module_name> [as <asname>]`
+        when provided to a LazyImporter.
+
+        :param module_name: Name of the module to import eg: "dataclasses"
+        :type module_name: str
+        :param asname: Optional name to use as the attribute name for the module
+        :type asname: str
+        """
         self.module_name = module_name
         self.asname = asname
 
@@ -71,9 +98,20 @@ class ModuleImport(_ImportBase):
 class FromImport(_ImportBase):
     module_name: str
     attrib_name: str
-    asname: None | str
+    asname: str
 
     def __init__(self, module_name, attrib_name, asname=None):
+        """
+        Equivalent to `from <module_name> import <attrib_name> [as <asname>]`
+        when provided to a LazyImporter
+
+        :param module_name: name of the module containing the objects to import
+        :type module_name: str
+        :param attrib_name: name of the attribute to import
+        :type attrib_name: str
+        :param asname: name to use as the name of the attribute on the lazy importer
+        :type asname: str | None
+        """
         self.module_name = module_name
         self.attrib_name = attrib_name
         self.asname = asname if asname is not None else attrib_name
@@ -117,16 +155,21 @@ class FromImport(_ImportBase):
 
 
 class MultiFromImport(_ImportBase):
-    """
-    Convenience to import multiple names from one module.
-
-    Must be converted into FromImport objects inside the lazyimporter
-    """
-
     module_name: str
     attrib_names: list[str | tuple[str, str]]
 
     def __init__(self, module_name, attrib_names):
+        """
+        Equivalent to `from <module_name> import <attrib_names[0]>, <attrib_names[1]>, ...
+        when provided to a LazyImporter
+
+        Optional 'asname' for attributes if given as a tuple.
+
+        :param module_name: Name of the module to import from
+        :type module_name: str
+        :param attrib_names: List of attributes or (attribute, asname) pairs.
+        :type attrib_names: list[str | tuple[str, str]]
+        """
         self.module_name = module_name
         self.attrib_names = attrib_names
 
@@ -153,7 +196,12 @@ class MultiFromImport(_ImportBase):
         return from_imports
 
     @property
-    def asnames(self) -> list[str]:
+    def asnames(self):
+        """
+
+        :return: list of 'asname' names to give as 'dir' for LazyImporter bindings
+        :rtype: list[str]
+        """
         names = []
         for item in self.attrib_names:
             if isinstance(item, str):
@@ -192,14 +240,19 @@ class MultiFromImport(_ImportBase):
 
 
 class _SubmoduleImports(_ImportBase):
-    """
-    Internal class to handle submodules
-    """
-
     module_name: str
     submodules: set[str]
 
     def __init__(self, module_name, submodules=None):
+        """
+        Private class to handle correctly importing submodules originally provided
+        as ModuleImport classes without 'asname' provided
+
+        :param module_name: name of the module
+        :type module_name: str
+        :param submodules: tuple of all submodules to import
+        :type submodules: None | set[str]
+        """
         self.module_name = module_name
         self.submodules = submodules if submodules is not None else set()
 
@@ -234,9 +287,16 @@ class _SubmoduleImports(_ImportBase):
 
 class LazyImporter:
     _imports: list[ModuleImport | FromImport | MultiFromImport]
-    _importers = dict[str, ModuleImport | FromImport | MultiFromImport | _SubmoduleImports]
+    _importers: dict[str, ModuleImport | FromImport | MultiFromImport | _SubmoduleImports]
 
-    def __init__(self, imports: list[ModuleImport | FromImport | MultiFromImport]):
+    def __init__(self, imports):
+        """
+        Create a LazyImporter to import modules and objects when they are accessed
+        on this importer object.
+
+        :param imports: list of imports
+        :type imports: list[ModuleImport | FromImport | MultiFromImport]
+        """
         # Keep original imports for __repr__
         self._imports = imports
         self._importers = {}
