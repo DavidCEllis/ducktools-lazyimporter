@@ -82,19 +82,27 @@ def test_mixed_gather():
 
 
 def test_multi_from():
+    multi_from = MultiFromImport(
+        "collections", ["defaultdict", ("namedtuple", "nt"), "OrderedDict"]
+    )
+    from_imp = FromImport("Functools", "partial")
+    mod_imp = ModuleImport("importlib.util")
+
+    # Resulting submodule import
+    submod_imp = _SubmoduleImports("importlib", {"importlib.util"})
+
     importer = LazyImporter([
-        MultiFromImport(
-            "collections", ["defaultdict", ("namedtuple", "nt"), "OrderedDict"]
-        ),
-        FromImport("Functools", "partial"),
-        ModuleImport("importlib.util"),
+        multi_from, from_imp, mod_imp
     ])
 
     assert dir(importer) == sorted([
-        "defaultdict", "nt", "ordereddict", "partial", "importlib"
+        "defaultdict", "nt", "OrderedDict", "partial", "importlib"
     ])
 
     assert importer._importers == {
-        "defaultdict": FromImport("collections", "defaultdict"),
-        "nt": FromImport("collections")
+        "defaultdict": multi_from,
+        "nt": multi_from,
+        "OrderedDict": multi_from,
+        "partial": from_imp,
+        "importlib": submod_imp,
     }

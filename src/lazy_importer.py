@@ -62,7 +62,10 @@ class ModuleImport(_ImportBase):
                         invalid_module = ".".join(submod_used)
                         raise ModuleNotFoundError(f"No module named {invalid_module!r}")
 
-        return mod
+        if self.asname:
+            return {self.asname: mod}
+        else:
+            return {self.module_basename: mod}
 
 
 class FromImport(_ImportBase):
@@ -110,10 +113,10 @@ class FromImport(_ImportBase):
                     invalid_module = ".".join(submod_used)
                     raise ModuleNotFoundError(f"No module named {invalid_module!r}")
 
-        return getattr(mod, self.attrib_name)
+        return {self.asname: getattr(mod, self.attrib_name)}
 
 
-class MultiFromImport:
+class MultiFromImport(_ImportBase):
     """
     Convenience to import multiple names from one module.
 
@@ -127,6 +130,19 @@ class MultiFromImport:
         self.module_name = module_name
         self.attrib_names = attrib_names
 
+    def __repr__(self):
+        return (f"{self.__class__.__name__}("
+                f"module_name={self.module_name!r}, "
+                f"attrib_names={self.attrib_names!r})")
+
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return (self.module_name, self.attrib_names) == (
+                other.module_name,
+                self.attrib_names,
+            )
+        return NotImplemented
+
     def as_from_imports(self) -> list[FromImport]:
         from_imports = []
         for name in self.attrib_names:
@@ -134,6 +150,44 @@ class MultiFromImport:
                 from_imports.append(FromImport(self.module_name, name))
             else:
                 from_imports.append(FromImport(self.module_name, name[0], name[1]))
+        return from_imports
+
+    @property
+    def asnames(self) -> list[str]:
+        names = []
+        for item in self.attrib_names:
+            if isinstance(item, str):
+                names.append(item)
+            else:
+                names.append(item[1])
+
+        return names
+
+    def do_import(self):
+        from_imports = {}
+
+        try:
+            # Module already imported
+            mod = sys.modules[self.module_name]
+        except KeyError:
+            # Perform the import
+            mod = __import__(self.module_name)
+
+            submod_used = [self.module_basename]
+            for submod in self.submodule_names:
+                submod_used.append(submod)
+                try:
+                    mod = getattr(mod, submod)
+                except AttributeError:
+                    invalid_module = ".".join(submod_used)
+                    raise ModuleNotFoundError(f"No module named {invalid_module!r}")
+
+        for name in self.attrib_names:
+            if isinstance(name, str):
+                from_imports[name] = getattr(mod, name)
+            else:
+                from_imports[name[1]] = getattr(mod, name[0])
+
         return from_imports
 
 
@@ -175,23 +229,28 @@ class _SubmoduleImports(_ImportBase):
             mod = sys.modules[self.module_basename]
         except KeyError:
             mod = __import__(self.module_basename)
-        return mod
+        return {self.module_name: mod}
 
 
 class LazyImporter:
     _imports: list[ModuleImport | FromImport | MultiFromImport]
-    _importers = dict[str, ModuleImport | FromImport | _SubmoduleImports]
+    _importers = dict[str, ModuleImport | FromImport | MultiFromImport | _SubmoduleImports]
 
     def __init__(self, imports: list[ModuleImport | FromImport | MultiFromImport]):
         # Keep original imports for __repr__
         self._imports = imports
         self._importers = {}
 
-        for imp in self._unpack_imports(imports):
-            if imp.asname:  # import x.y as z OR from x import y
-                if imp.asname in self._importers:
-                    raise ValueError(f"{imp.asname!r} used for multiple imports.")
-                self._importers[imp.asname] = imp
+        for imp in self._imports:
+            if asname := getattr(imp, "asname", None):  # import x.y as z OR from x import y
+                if asname in self._importers:
+                    raise ValueError(f"{asname!r} used for multiple imports.")
+                self._importers[asname] = imp
+            elif asnames := getattr(imp, "asnames", None):  # from x import y, z ...
+                for asname in asnames:
+                    if asname in self._importers:
+                        raise ValueError(f"{asname!r} used for multiple imports.")
+                    self._importers[asname] = imp
             elif isinstance(imp, ModuleImport):  # import x OR import x.y
                 # Collecting all submodule imports under the main module import
                 try:
@@ -218,20 +277,6 @@ class LazyImporter:
                     f"{imp} is not an instance of ModuleImport or FromImport"
                 )
 
-    @staticmethod
-    def _unpack_imports(imports: list[ModuleImport | FromImport | MultiFromImport]):
-        # Helper function to unpack MultiFromImport objects
-        # into FromImports
-        for imp in imports:
-            if isinstance(imp, MultiFromImport):
-                yield from imp.as_from_imports()
-            elif isinstance(imp, ModuleImport | FromImport):
-                yield imp
-            else:
-                raise TypeError(
-                    f"{imp} is not an instance of ModuleImport or FromImport"
-                )
-
     def __getattr__(self, name):
         try:
             importer = self._importers[name]
@@ -240,8 +285,12 @@ class LazyImporter:
                 f"{self.__class__.__name__!r} object has no attribute {name!r}"
             )
 
-        obj = importer.do_import()
-        setattr(self, name, obj)
+        import_data = importer.do_import()
+        for key, value in import_data.items():
+            setattr(self, key, value)
+
+        obj = import_data[name]
+
         return obj
 
     def __dir__(self):
