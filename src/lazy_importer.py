@@ -6,7 +6,13 @@ import abc
 import sys
 
 __version__ = "0.0.3-dev0"
-__all__ = ["LazyImporter", "ModuleImport", "FromImport", "MultiFromImport"]
+__all__ = [
+    "LazyImporter",
+    "ModuleImport",
+    "FromImport",
+    "MultiFromImport",
+    "get_importer_state",
+]
 
 
 class _ImportBase(abc.ABC):
@@ -358,3 +364,21 @@ class LazyImporter:
 
     def __repr__(self):
         return f"{self.__class__.__name__}(imports={self._imports!r})"
+
+
+def get_importer_state(importer):
+    """
+    Get the importer state showing what has been imported and what attributes remain.
+
+    :param importer: LazyImporter object to be examined
+    :type importer: LazyImporter
+    :return: Dict of imported_modules and lazy_modules
+    :rtype: dict[str, dict[str, typing.Any] | list[str]]
+    """
+    imported_attributes = {k: v for k, v in importer.__dict__.items() if k in dir(importer)}
+    lazy_attributes = [k for k in dir(importer) if k not in imported_attributes]
+
+    return {
+        "imported_attributes": imported_attributes,
+        "lazy_attributes": lazy_attributes
+    }
