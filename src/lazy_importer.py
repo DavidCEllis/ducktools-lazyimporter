@@ -394,6 +394,10 @@ def get_module_funcs(importer, module_name=None):
     __dir__ function and __getattr__ will set the attributes on the module when
     they are first accessed.
 
+    If a module already has __dir__ and/or __getattr__ functions it is probably
+    better to use the result of dir(importer) and getattr(importer, name) to
+    extend those functions.
+
     :param importer: Lazy importer that provides additional objects to export
                      as part of a module
     :type importer: LazyImporter
