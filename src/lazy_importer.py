@@ -406,7 +406,7 @@ def get_module_funcs(importer, module_name=None):
 
     if module_name:
         mod = sys.modules[module_name]
-        dir_data = sorted(list(mod.__dict__.keys()) + dir(mod))
+        dir_data = sorted(list(mod.__dict__.keys()) + dir(importer))
 
         def __getattr__(name):
             attr = getattr(importer, name)
