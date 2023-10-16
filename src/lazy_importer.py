@@ -181,9 +181,11 @@ class MultiFromImport(_ImportBase):
         self.attrib_names = attrib_names
 
     def __repr__(self):
-        return (f"{self.__class__.__name__}("
-                f"module_name={self.module_name!r}, "
-                f"attrib_names={self.attrib_names!r})")
+        return (
+            f"{self.__class__.__name__}("
+            f"module_name={self.module_name!r}, "
+            f"attrib_names={self.attrib_names!r})"
+        )
 
     def __eq__(self, other):
         if self.__class__ is other.__class__:
@@ -294,7 +296,9 @@ class _SubmoduleImports(_ImportBase):
 
 class LazyImporter:
     _imports: list[ModuleImport | FromImport | MultiFromImport]
-    _importers: dict[str, ModuleImport | FromImport | MultiFromImport | _SubmoduleImports]
+    _importers: dict[
+        str, ModuleImport | FromImport | MultiFromImport | _SubmoduleImports
+    ]
 
     def __init__(self, imports):
         """
@@ -309,16 +313,21 @@ class LazyImporter:
         self._importers = {}
 
         for imp in self._imports:
-            if asname := getattr(imp, "asname", None):  # import x.y as z OR from x import y
+            # import x.y as z OR from x import y
+            if asname := getattr(imp, "asname", None):
                 if asname in self._importers:
                     raise ValueError(f"{asname!r} used for multiple imports.")
                 self._importers[asname] = imp
-            elif asnames := getattr(imp, "asnames", None):  # from x import y, z ...
+
+            # from x import y, z ...
+            elif asnames := getattr(imp, "asnames", None):
                 for asname in asnames:
                     if asname in self._importers:
                         raise ValueError(f"{asname!r} used for multiple imports.")
                     self._importers[asname] = imp
-            elif isinstance(imp, ModuleImport):  # import x OR import x.y
+
+            # import x OR import x.y
+            elif isinstance(imp, ModuleImport):
                 # Collecting all submodule imports under the main module import
                 try:
                     importer = self._importers[imp.module_basename]
@@ -376,12 +385,14 @@ def get_importer_state(importer):
     :return: Dict of imported_modules and lazy_modules
     :rtype: dict[str, dict[str, typing.Any] | list[str]]
     """
-    imported_attributes = {k: v for k, v in importer.__dict__.items() if k in dir(importer)}
+    imported_attributes = {
+        k: v for k, v in importer.__dict__.items() if k in dir(importer)
+    }
     lazy_attributes = [k for k in dir(importer) if k not in imported_attributes]
 
     return {
         "imported_attributes": imported_attributes,
-        "lazy_attributes": lazy_attributes
+        "lazy_attributes": lazy_attributes,
     }
 
 
