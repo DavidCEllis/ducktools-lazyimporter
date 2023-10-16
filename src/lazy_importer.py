@@ -12,6 +12,7 @@ __all__ = [
     "FromImport",
     "MultiFromImport",
     "get_importer_state",
+    "get_module_funcs",
 ]
 
 
@@ -382,3 +383,43 @@ def get_importer_state(importer):
         "imported_attributes": imported_attributes,
         "lazy_attributes": lazy_attributes
     }
+
+
+def get_module_funcs(importer, module_name=None):
+    """
+    Get simplified __getattr__ and __dir__ functions for a module that includes
+    the imports from the importer as if they are part of the module.
+
+    If a module name is provided, attributes from the module will appear in the
+    __dir__ function and __getattr__ will set the attributes on the module when
+    they are first accessed.
+
+    :param importer: Lazy importer that provides additional objects to export
+                     as part of a module
+    :type importer: LazyImporter
+    :param module_name: Name of the module that needs the __dir__ and
+                        __getattr__ functions. Usually `__name__`.
+    :type module_name: str
+    :return: __getattr__ and __dir__ functions
+    :rtype: tuple[types.FunctionType, types.FunctionType]
+    """
+
+    if module_name:
+        mod = sys.modules[module_name]
+        dir_data = sorted(list(mod.__dict__.keys()) + dir(mod))
+
+        def __getattr__(name):
+            attr = getattr(importer, name)
+            setattr(mod, name, attr)
+            return attr
+
+    else:
+        dir_data = dir(importer)
+
+        def __getattr__(name):
+            return getattr(importer, name)
+
+    def __dir__():
+        return dir_data
+
+    return __getattr__, __dir__
