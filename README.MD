@@ -107,7 +107,7 @@ laz = LazyImporter([FromImport("parent_module.submodule", "useful_tool")])
 __getattr__, __dir__ = get_module_funcs(laz, __name__)
 ```
 
-## How to use ##
+## Demonstration of when imports occur ##
 
 ```python
 from lazy_importer import (
