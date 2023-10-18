@@ -2,6 +2,57 @@
 
 Create an object to handle lazily importing from other modules.
 
+This needs a more distinctive name.
+
+Intended to help save on start time where some modules are only needed for specific
+functions while allowing information showing the import information to appear at
+the top of a module where expected.
+
+This form of import works by creating a specific LazyImporter object that lazily
+imports modules or module attributes when the module or attribute is accessed
+on the object.
+
+## Example ##
+
+Example using the packaging module.
+
+```python
+__version__ = "v0.1.5"
+
+from lazy_importer import LazyImporter, FromImport
+
+laz = LazyImporter([
+    FromImport("packaging.version", "Version")
+])
+
+def is_newer_version(version_no: str) -> bool:
+    """Check if a version number given indicates 
+    a newer version than this package."""
+    this_ver = laz.Version(__version__) 
+    new_ver = laz.Version(version_no)
+    return new_ver > this_ver
+
+# Import will only occur when the function is called and 
+# laz.Version is accessed
+print(is_newer_version("v0.2.0"))
+```
+
+## Hasn't this already been done ##
+
+Yes.
+
+But...
+
+Most implementations rely on stdlib modules that are themselves slow to import
+(for example: typing, importlib.util, logging).
+By contrast `lazy-importer` only uses modules that python imports on launch
+as part of `site`.
+
+`lazy-importer` does not attempt to propogate laziness, only the modules provided
+to `lazy-importer` directly will be imported lazily. Any subdependencies of those 
+modules will be imported eagerly as if the import statement is placed where the 
+importer attribute is first accessed. 
+
 ## Use Case ##
 
 There are two main use cases this is designed for.
