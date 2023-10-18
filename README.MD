@@ -48,7 +48,7 @@ Most implementations rely on stdlib modules that are themselves slow to import
 By contrast `lazy-importer` only uses modules that python imports on launch
 as part of `site`.
 
-`lazy-importer` does not attempt to propogate laziness, only the modules provided
+`lazy-importer` does not attempt to propagate laziness, only the modules provided
 to `lazy-importer` directly will be imported lazily. Any subdependencies of those 
 modules will be imported eagerly as if the import statement is placed where the 
 importer attribute is first accessed. 
