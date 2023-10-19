@@ -101,7 +101,7 @@ class ModuleImport(_ImportBase):
             mod = __import__(
                 self.module_name_noprefix,
                 globals=globs,
-                level=self.import_level
+                level=self.import_level,
             )
 
             if self.asname:  # return the submodule
@@ -349,7 +349,9 @@ class _ImporterGrouper:
 
         for imp in inst._imports:  # noqa
             if imp.import_level > 0 and inst._globals is None:
-                raise ValueError("Attempted to setup relative import ")
+                raise ValueError(
+                    "Attempted to setup relative import without providing globals()."
+                )
 
             # import x.y as z OR from x import y
             if asname := getattr(imp, "asname", None):
