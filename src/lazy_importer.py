@@ -147,16 +147,7 @@ class FromImport(_ImportBase):
             mod = sys.modules[self.module_name]
         except KeyError:
             # Perform the import
-            mod = __import__(self.module_name)
-
-            submod_used = [self.module_basename]
-            for submod in self.submodule_names:
-                submod_used.append(submod)
-                try:
-                    mod = getattr(mod, submod)
-                except AttributeError:
-                    invalid_module = ".".join(submod_used)
-                    raise ModuleNotFoundError(f"No module named {invalid_module!r}")
+            mod = __import__(self.module_name, fromlist=[self.attrib_name])
 
         return {self.asname: getattr(mod, self.attrib_name)}
 
@@ -228,16 +219,7 @@ class MultiFromImport(_ImportBase):
             mod = sys.modules[self.module_name]
         except KeyError:
             # Perform the import
-            mod = __import__(self.module_name)
-
-            submod_used = [self.module_basename]
-            for submod in self.submodule_names:
-                submod_used.append(submod)
-                try:
-                    mod = getattr(mod, submod)
-                except AttributeError:
-                    invalid_module = ".".join(submod_used)
-                    raise ModuleNotFoundError(f"No module named {invalid_module!r}")
+            mod = __import__(self.module_name, fromlist=self.asnames)
 
         for name in self.attrib_names:
             if isinstance(name, str):
@@ -294,43 +276,60 @@ class _SubmoduleImports(_ImportBase):
         return {self.module_name: mod}
 
 
-class LazyImporter:
-    _imports: list[ModuleImport | FromImport | MultiFromImport]
-    _importers: dict[
-        str, ModuleImport | FromImport | MultiFromImport | _SubmoduleImports
-    ]
+class _ImporterGrouper:
+    def __init__(self):
+        self._name = None
 
-    def __init__(self, imports):
+    def __set_name__(self, owner, name):
+        self._name = name
+
+    def __get__(self, inst, cls=None):
+        if inst:
+            importers = self.group_importers(inst)
+            setattr(inst, self._name, importers)
+            return importers
+        return self
+
+    @staticmethod
+    def group_importers(inst):
         """
-        Create a LazyImporter to import modules and objects when they are accessed
-        on this importer object.
+        Take a LazyImporter and return the dictionary of names to _ImportBase subclasses
+        needed to perform the lazy imports.
 
-        :param imports: list of imports
-        :type imports: list[ModuleImport | FromImport | MultiFromImport]
+        ModuleImport instances with the same base module and no 'asname' are grouped in
+        order to allow access to any of the submodules. As there is no way to know which
+        submodule is being accessed all are imported when the base module is first accessed.
+
+        This is kept outside of the LazyImporter class to keep the namespace of LazyImporter
+        minimal. It should be called when the `_importers` attribute is first accessed on
+        an instance.
+
+        :param inst: LazyImporter instance
+        :type inst: LazyImporter
+        :return: lazy importers attribute dict mapping to the objects that perform the imports
+        :rtype: dict[str, _ImportBase]
         """
-        # Keep original imports for __repr__
-        self._imports = imports
-        self._importers = {}
+        importers = {}
 
-        for imp in self._imports:
+        for imp in inst._imports:  # noqa
             # import x.y as z OR from x import y
             if asname := getattr(imp, "asname", None):
-                if asname in self._importers:
+                if asname in importers:
                     raise ValueError(f"{asname!r} used for multiple imports.")
-                self._importers[asname] = imp
+                importers[asname] = imp
 
             # from x import y, z ...
             elif asnames := getattr(imp, "asnames", None):
                 for asname in asnames:
-                    if asname in self._importers:
+                    if asname in importers:
                         raise ValueError(f"{asname!r} used for multiple imports.")
-                    self._importers[asname] = imp
+                    importers[asname] = imp
 
             # import x OR import x.y
             elif isinstance(imp, ModuleImport):
                 # Collecting all submodule imports under the main module import
                 try:
-                    importer = self._importers[imp.module_basename]
+                    importer = importers[imp.module_basename]
                 except KeyError:
                     if imp.module_name == imp.module_basename:
                         importer = _SubmoduleImports(imp.module_basename)
@@ -338,7 +337,7 @@ class LazyImporter:
                         importer = _SubmoduleImports(
                             imp.module_basename, {imp.module_name}
                         )
-                    self._importers[imp.module_basename] = importer
+                    importers[imp.module_basename] = importer
                 else:
                     if isinstance(importer, _SubmoduleImports):
                         # Don't add the basename
@@ -352,8 +351,28 @@ class LazyImporter:
                 raise TypeError(
                     f"{imp} is not an instance of ModuleImport or FromImport"
                 )
+        return importers
+
+
+class LazyImporter:
+    _importers = _ImporterGrouper()
+
+    def __init__(self, imports):
+        """
+        Create a LazyImporter to import modules and objects when they are accessed
+        on this importer object.
+
+        :param imports: list of imports
+        :type imports: list[ModuleImport | FromImport | MultiFromImport]
+        """
+        # Keep original imports for __repr__
+        self._imports = imports
 
     def __getattr__(self, name):
+        # This performs the imports associated with the name of the attribute
+        # and sets the result to that name.
+        # If the name is linked to a MultiFromImport all of the attributes are
+        # set when the first is accessed.
         try:
             importer = self._importers[name]
         except KeyError:

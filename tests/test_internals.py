@@ -47,7 +47,6 @@ def test_asname_gather():
     }
 
 
-
 def test_from_gather():
     importer = LazyImporter([
         FromImport("dataclasses", "dataclass"),
@@ -85,7 +84,7 @@ def test_multi_from():
     multi_from = MultiFromImport(
         "collections", ["defaultdict", ("namedtuple", "nt"), "OrderedDict"]
     )
-    from_imp = FromImport("Functools", "partial")
+    from_imp = FromImport("functools", "partial")
     mod_imp = ModuleImport("importlib.util")
 
     # Resulting submodule import

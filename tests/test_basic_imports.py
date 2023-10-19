@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from lazy_importer import LazyImporter, ModuleImport, FromImport
+from lazy_importer import LazyImporter, ModuleImport, FromImport, MultiFromImport
 
 
 def test_imports_lazy():
@@ -46,3 +46,20 @@ def test_imports_submod():
 
     assert laz_sub.ex_mod.name == "ex_mod"
     assert laz_sub.ex_mod.ex_submod.name == "ex_submod"
+
+
+def test_submod_from():
+    laz = LazyImporter([
+        FromImport("ex_mod.ex_submod", "name"),
+    ])
+
+    assert laz.name == "ex_submod"
+
+
+def test_submod_multifrom():
+    laz = LazyImporter([
+        MultiFromImport("ex_mod.ex_submod", ["name", ("name2", "othername")]),
+    ])
+
+    assert laz.name == "ex_submod"
+    assert laz.othername == "ex_submod2"
