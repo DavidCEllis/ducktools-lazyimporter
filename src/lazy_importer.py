@@ -396,6 +396,9 @@ class _ImporterGrouper:
 
 
 class LazyImporter:
+    _imports: list[ModuleImport | FromImport | MultiFromImport]
+    _globals: dict
+
     _importers = _ImporterGrouper()
 
     def __init__(self, imports, *, globs=None):
