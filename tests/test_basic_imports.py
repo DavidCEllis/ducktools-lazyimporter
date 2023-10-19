@@ -63,3 +63,20 @@ def test_submod_multifrom():
 
     assert laz.name == "ex_submod"
     assert laz.othername == "ex_submod2"
+
+
+def test_relative_import():
+    import example_modules.lazy_submod_ex as lse
+
+    laz = lse.lazy_submod_from_import()
+    assert laz.name == "ex_submod"
+
+    laz = lse.lazy_submod_multi_from_import()
+    assert laz.name == "ex_submod"
+    assert laz.othername == "ex_submod2"
+
+
+def test_submod_relative_import():
+    from example_modules.ex_othermod import laz
+
+    assert laz.name == "ex_submod"

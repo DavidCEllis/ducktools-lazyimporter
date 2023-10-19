@@ -103,7 +103,10 @@ from lazy_importer import LazyImporter, FromImport, get_module_funcs
 
 __all__ = [..., "useful_tool"]
 
-laz = LazyImporter([FromImport("parent_module.submodule", "useful_tool")])
+laz = LazyImporter(
+    [FromImport(".submodule", "useful_tool")],
+    globs=globals(),  # If relative imports are used, globals() must be provided.
+)
 __getattr__, __dir__ = get_module_funcs(laz, __name__)
 ```
 

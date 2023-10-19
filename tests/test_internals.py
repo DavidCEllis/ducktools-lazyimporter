@@ -1,5 +1,9 @@
 from lazy_importer import (
-    ModuleImport, FromImport, LazyImporter, _SubmoduleImports, MultiFromImport
+    ModuleImport,
+    FromImport,
+    LazyImporter,
+    _SubmoduleImports,
+    MultiFromImport,
 )
 
 
@@ -15,43 +19,44 @@ def test_equal_module():
 
 
 def test_no_duplication():
-    importer = LazyImporter([
-        ModuleImport("collections"),
-        ModuleImport("collections")
-    ])
+    importer = LazyImporter([ModuleImport("collections"), ModuleImport("collections")])
 
     assert dir(importer) == ["collections"]
     assert importer._importers == {"collections": _SubmoduleImports("collections")}
 
 
 def test_submodule_gather():
-    importer = LazyImporter([
-        ModuleImport("collections.abc"),
-    ])
+    importer = LazyImporter(
+        [
+            ModuleImport("collections.abc"),
+        ]
+    )
 
     assert dir(importer) == ["collections"]
 
     assert importer._importers == {
-        "collections":  _SubmoduleImports("collections", {"collections.abc"})
+        "collections": _SubmoduleImports("collections", {"collections.abc"})
     }
 
 
 def test_asname_gather():
-    importer = LazyImporter([
-        ModuleImport("collections.abc", "abc"),
-    ])
+    importer = LazyImporter(
+        [
+            ModuleImport("collections.abc", "abc"),
+        ]
+    )
 
     assert dir(importer) == ["abc"]
-    assert importer._importers == {
-        "abc": ModuleImport("collections.abc", "abc")
-    }
+    assert importer._importers == {"abc": ModuleImport("collections.abc", "abc")}
 
 
 def test_from_gather():
-    importer = LazyImporter([
-        FromImport("dataclasses", "dataclass"),
-        FromImport("dataclasses", "dataclass", "dc")
-    ])
+    importer = LazyImporter(
+        [
+            FromImport("dataclasses", "dataclass"),
+            FromImport("dataclasses", "dataclass", "dc"),
+        ]
+    )
 
     assert dir(importer) == ["dataclass", "dc"]
 
@@ -62,13 +67,15 @@ def test_from_gather():
 
 
 def test_mixed_gather():
-    importer = LazyImporter([
-        ModuleImport("collections"),
-        ModuleImport("collections.abc"),
-        ModuleImport("functools", "ft"),
-        FromImport("dataclasses", "dataclass"),
-        FromImport("typing", "NamedTuple", "nt"),
-    ])
+    importer = LazyImporter(
+        [
+            ModuleImport("collections"),
+            ModuleImport("collections.abc"),
+            ModuleImport("functools", "ft"),
+            FromImport("dataclasses", "dataclass"),
+            FromImport("typing", "NamedTuple", "nt"),
+        ]
+    )
 
     assert dir(importer) == ["collections", "dataclass", "ft", "nt"]
 
@@ -76,7 +83,7 @@ def test_mixed_gather():
         "collections": _SubmoduleImports("collections", {"collections.abc"}),
         "dataclass": FromImport("dataclasses", "dataclass"),
         "ft": ModuleImport("functools", "ft"),
-        "nt": FromImport("typing", "NamedTuple", "nt")
+        "nt": FromImport("typing", "NamedTuple", "nt"),
     }
 
 
@@ -90,13 +97,11 @@ def test_multi_from():
     # Resulting submodule import
     submod_imp = _SubmoduleImports("importlib", {"importlib.util"})
 
-    importer = LazyImporter([
-        multi_from, from_imp, mod_imp
-    ])
+    importer = LazyImporter([multi_from, from_imp, mod_imp])
 
-    assert dir(importer) == sorted([
-        "defaultdict", "nt", "OrderedDict", "partial", "importlib"
-    ])
+    assert dir(importer) == sorted(
+        ["defaultdict", "nt", "OrderedDict", "partial", "importlib"]
+    )
 
     assert importer._importers == {
         "defaultdict": multi_from,
@@ -105,3 +110,20 @@ def test_multi_from():
         "partial": from_imp,
         "importlib": submod_imp,
     }
+
+
+def test_relative_basename():
+    from_imp_level0 = FromImport("mod", "obj")
+    from_imp_level1 = FromImport(".mod", "obj")
+    from_imp_level2 = FromImport("..mod", "obj")
+
+    assert from_imp_level0.import_level == 0
+    assert from_imp_level1.import_level == 1
+    assert from_imp_level2.import_level == 2
+
+    assert (
+        from_imp_level0.module_name_noprefix
+        == from_imp_level1.module_name_noprefix
+        == from_imp_level2.module_name_noprefix
+        == "mod"
+    )

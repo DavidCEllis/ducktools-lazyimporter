@@ -18,6 +18,20 @@ __all__ = [
 
 class _ImportBase(abc.ABC):
     module_name: str
+    import_level: int
+
+    @property
+    def module_name_noprefix(self):
+        return self.module_name.lstrip(".")
+
+    @property
+    def import_level(self):
+        level = 0
+        for char in self.module_name:
+            if char != ".":
+                break
+            level += 1
+        return level
 
     @property
     def module_basename(self):
@@ -28,7 +42,7 @@ class _ImportBase(abc.ABC):
         :return: name of base module
         :rtype: str
         """
-        return self.module_name.split(".")[0]
+        return self.module_name_noprefix.split(".")[0]
 
     @property
     def submodule_names(self):
@@ -38,10 +52,10 @@ class _ImportBase(abc.ABC):
         :return: List of submodule names.
         :rtype: list[str]
         """
-        return self.module_name.split(".")[1:]
+        return self.module_name_noprefix.split(".")[1:]
 
     @abc.abstractmethod
-    def do_import(self):
+    def do_import(self, globs=None):
         """
         Perform the imports defined and return a dictionary.
 
@@ -80,11 +94,15 @@ class ModuleImport(_ImportBase):
             return (self.module_name, self.asname) == (other.module_name, other.asname)
         return NotImplemented
 
-    def do_import(self):
+    def do_import(self, globs=None):
         try:  # Already imported
-            mod = sys.modules[self.module_name]
+            mod = sys.modules[self.module_name_noprefix]
         except KeyError:
-            mod = __import__(self.module_name)
+            mod = __import__(
+                self.module_name_noprefix,
+                globals=globs,
+                level=self.import_level
+            )
 
             if self.asname:  # return the submodule
                 submod_used = [self.module_basename]
@@ -141,13 +159,18 @@ class FromImport(_ImportBase):
             )
         return NotImplemented
 
-    def do_import(self):
+    def do_import(self, globs=None):
         try:
             # Module already imported
             mod = sys.modules[self.module_name]
         except KeyError:
             # Perform the import
-            mod = __import__(self.module_name, fromlist=[self.attrib_name])
+            mod = __import__(
+                self.module_name_noprefix,
+                globals=globs,
+                fromlist=[self.attrib_name],
+                level=self.import_level,
+            )
 
         return {self.asname: getattr(mod, self.attrib_name)}
 
@@ -211,7 +234,7 @@ class MultiFromImport(_ImportBase):
 
         return names
 
-    def do_import(self):
+    def do_import(self, globs=None):
         from_imports = {}
 
         try:
@@ -219,7 +242,12 @@ class MultiFromImport(_ImportBase):
             mod = sys.modules[self.module_name]
         except KeyError:
             # Perform the import
-            mod = __import__(self.module_name, fromlist=self.asnames)
+            mod = __import__(
+                self.module_name_noprefix,
+                globals=globs,
+                fromlist=self.asnames,
+                level=self.import_level,
+            )
 
         for name in self.attrib_names:
             if isinstance(name, str):
@@ -263,16 +291,24 @@ class _SubmoduleImports(_ImportBase):
             )
         return NotImplemented
 
-    def do_import(self):
+    def do_import(self, globs=None):
         for submod in self.submodules:  # Make sure any submodules are in place
             try:
                 _ = sys.modules[submod]
             except KeyError:
-                __import__(submod)
+                __import__(
+                    submod,
+                    globals=globs,
+                    level=self.import_level,
+                )
         try:
             mod = sys.modules[self.module_basename]
         except KeyError:
-            mod = __import__(self.module_basename)
+            mod = __import__(
+                self.module_basename,
+                globals=globs,
+                level=self.import_level,
+            )
         return {self.module_name: mod}
 
 
@@ -312,6 +348,9 @@ class _ImporterGrouper:
         importers = {}
 
         for imp in inst._imports:  # noqa
+            if imp.import_level > 0 and inst._globals is None:
+                raise ValueError("Attempted to setup relative import ")
+
             # import x.y as z OR from x import y
             if asname := getattr(imp, "asname", None):
                 if asname in importers:
@@ -335,14 +374,14 @@ class _ImporterGrouper:
                         importer = _SubmoduleImports(imp.module_basename)
                     else:
                         importer = _SubmoduleImports(
-                            imp.module_basename, {imp.module_name}
+                            imp.module_basename, {imp.module_name_noprefix}
                         )
                     importers[imp.module_basename] = importer
                 else:
                     if isinstance(importer, _SubmoduleImports):
                         # Don't add the basename
-                        if imp.module_name != imp.module_basename:
-                            importer.submodules.add(imp.module_name)
+                        if imp.module_name_noprefix != imp.module_basename:
+                            importer.submodules.add(imp.module_name_noprefix)
                     else:
                         raise ValueError(
                             f"{imp.module_name!r} used for multiple imports."
@@ -357,16 +396,21 @@ class _ImporterGrouper:
 class LazyImporter:
     _importers = _ImporterGrouper()
 
-    def __init__(self, imports):
+    def __init__(self, imports, *, globs=None):
         """
         Create a LazyImporter to import modules and objects when they are accessed
         on this importer object.
 
+        globals() must be provided to the importer if relative imports are used.
+
         :param imports: list of imports
         :type imports: list[ModuleImport | FromImport | MultiFromImport]
+        :param globs: globals object for relative imports
+        :type globs: dict[str, typing.Any]
         """
         # Keep original imports for __repr__
         self._imports = imports
+        self._globals = globs
 
     def __getattr__(self, name):
         # This performs the imports associated with the name of the attribute
@@ -380,7 +424,7 @@ class LazyImporter:
                 f"{self.__class__.__name__!r} object has no attribute {name!r}"
             )
 
-        import_data = importer.do_import()
+        import_data = importer.do_import(globs=self._globals)
         for key, value in import_data.items():
             setattr(self, key, value)
 
