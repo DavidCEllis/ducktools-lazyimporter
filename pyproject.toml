@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name="ducktools-lazyimporter"
-description="Source to source converter to convert a context block of imports to be lazy."
+description="LazyImporter class to manage imports on attribute access."
 authors = [
   { name="David C Ellis" },
 ]
