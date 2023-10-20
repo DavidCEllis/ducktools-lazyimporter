@@ -45,11 +45,11 @@ But...
 
 Most implementations rely on stdlib modules that are themselves slow to import
 (for example: typing, importlib.util, logging).
-By contrast `lazy-importer` only uses modules that python imports on launch
+By contrast `lazyimporter` only uses modules that python imports on launch
 as part of `site`.
 
-`lazy-importer` does not attempt to propagate laziness, only the modules provided
-to `lazy-importer` directly will be imported lazily. Any subdependencies of those 
+`lazyimporter` does not attempt to propagate laziness, only the modules provided
+to `lazyimporter` directly will be imported lazily. Any subdependencies of those 
 modules will be imported eagerly as if the import statement is placed where the 
 importer attribute is first accessed. 
 
@@ -113,7 +113,7 @@ __getattr__, __dir__ = get_module_funcs(laz, __name__)
 ## Demonstration of when imports occur ##
 
 ```python
-from lazy_importer import (
+from ducktools.lazyimporter import (
     LazyImporter,
     ModuleImport,
     FromImport,
