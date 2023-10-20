@@ -12,6 +12,11 @@ This form of import works by creating a specific LazyImporter object that lazily
 imports modules or module attributes when the module or attribute is accessed
 on the object.
 
+## How to download ##
+
+Download from PyPI:
+    `python -m pip install ducktools-lazyimporter`
+
 ## Example ##
 
 Example using the packaging module.
