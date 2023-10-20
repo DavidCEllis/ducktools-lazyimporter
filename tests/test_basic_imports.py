@@ -2,7 +2,12 @@ import sys
 
 import pytest
 
-from lazy_importer import LazyImporter, ModuleImport, FromImport, MultiFromImport
+from ducktools.lazyimporter import (
+    LazyImporter,
+    ModuleImport,
+    FromImport,
+    MultiFromImport
+)
 
 
 def test_imports_lazy():

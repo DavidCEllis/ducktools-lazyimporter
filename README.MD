@@ -1,8 +1,8 @@
-# lazy_importer.py #
+# ducktools: lazyimporter #
 
 Create an object to handle lazily importing from other modules.
 
-This needs a more distinctive name.
+Nearly every form of "lazyimporter" module name is taken on PyPI so this is namespaced.
 
 Intended to help save on start time where some modules are only needed for specific
 functions while allowing information showing the import information to appear at
@@ -19,7 +19,7 @@ Example using the packaging module.
 ```python
 __version__ = "v0.1.5"
 
-from lazy_importer import LazyImporter, FromImport
+from ducktools.lazyimporter import LazyImporter, FromImport
 
 laz = LazyImporter([
     FromImport("packaging.version", "Version")
@@ -72,7 +72,7 @@ def get_copy(obj):
 
 With a LazyImporter:
 ```python
-from lazy_importer import LazyImporter, FromImport
+from ducktools.lazyimporter import LazyImporter, FromImport
 
 laz = LazyImporter([FromImport("copy", "deepcopy")])
 
@@ -99,7 +99,7 @@ __all__ = [..., "useful_tool"]
 
 Lazy import:
 ```python
-from lazy_importer import LazyImporter, FromImport, get_module_funcs
+from ducktools.lazyimporter import LazyImporter, FromImport, get_module_funcs
 
 __all__ = [..., "useful_tool"]
 
