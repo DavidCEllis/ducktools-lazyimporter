@@ -1,8 +1,8 @@
-# lazy_importer.py #
+# ducktools: lazyimporter #
 
 Create an object to handle lazily importing from other modules.
 
-This needs a more distinctive name.
+Nearly every form of "lazyimporter" module name is taken on PyPI so this is namespaced.
 
 Intended to help save on start time where some modules are only needed for specific
 functions while allowing information showing the import information to appear at
@@ -19,7 +19,7 @@ Example using the packaging module.
 ```python
 __version__ = "v0.1.5"
 
-from lazy_importer import LazyImporter, FromImport
+from ducktools.lazyimporter import LazyImporter, FromImport
 
 laz = LazyImporter([
     FromImport("packaging.version", "Version")
@@ -45,11 +45,11 @@ But...
 
 Most implementations rely on stdlib modules that are themselves slow to import
 (for example: typing, importlib.util, logging).
-By contrast `lazy-importer` only uses modules that python imports on launch
+By contrast `lazyimporter` only uses modules that python imports on launch
 as part of `site`.
 
-`lazy-importer` does not attempt to propagate laziness, only the modules provided
-to `lazy-importer` directly will be imported lazily. Any subdependencies of those 
+`lazyimporter` does not attempt to propagate laziness, only the modules provided
+to `lazyimporter` directly will be imported lazily. Any subdependencies of those 
 modules will be imported eagerly as if the import statement is placed where the 
 importer attribute is first accessed. 
 
@@ -72,7 +72,7 @@ def get_copy(obj):
 
 With a LazyImporter:
 ```python
-from lazy_importer import LazyImporter, FromImport
+from ducktools.lazyimporter import LazyImporter, FromImport
 
 laz = LazyImporter([FromImport("copy", "deepcopy")])
 
@@ -99,7 +99,7 @@ __all__ = [..., "useful_tool"]
 
 Lazy import:
 ```python
-from lazy_importer import LazyImporter, FromImport, get_module_funcs
+from ducktools.lazyimporter import LazyImporter, FromImport, get_module_funcs
 
 __all__ = [..., "useful_tool"]
 
@@ -113,7 +113,7 @@ __getattr__, __dir__ = get_module_funcs(laz, __name__)
 ## Demonstration of when imports occur ##
 
 ```python
-from lazy_importer import (
+from ducktools.lazyimporter import (
     LazyImporter,
     ModuleImport,
     FromImport,

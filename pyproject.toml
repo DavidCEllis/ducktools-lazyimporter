@@ -5,7 +5,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name="lazy_importer"
+name="ducktools-lazyimporter"
 description="Source to source converter to convert a context block of imports to be lazy."
 authors = [
   { name="David C Ellis" },
@@ -25,9 +25,8 @@ dynamic = ['version']
 [project.optional-dependencies]
 TEST = ["pytest"]
 
-[tool.setuptools]
-package-dir = {"" = "src"}
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.dynamic]
-version = {attr = "lazy_importer.__version__"}
-
+version = {attr = "ducktools.lazyimporter.__version__"}

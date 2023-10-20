@@ -1,4 +1,4 @@
-from lazy_importer import (
+from ducktools.lazyimporter import (
     ModuleImport,
     FromImport,
     LazyImporter,

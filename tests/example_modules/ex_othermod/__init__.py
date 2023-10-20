@@ -1,4 +1,7 @@
-from lazy_importer import LazyImporter, FromImport
+from ducktools.lazyimporter import (
+    LazyImporter,
+    FromImport,
+)
 
 laz = LazyImporter(
     [FromImport("..ex_mod.ex_submod", "name")],

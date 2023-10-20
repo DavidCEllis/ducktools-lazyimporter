@@ -1,4 +1,8 @@
-from lazy_importer import LazyImporter, FromImport, MultiFromImport
+from ducktools.lazyimporter import (
+    LazyImporter,
+    FromImport,
+    MultiFromImport,
+)
 
 
 def lazy_submod_from_import():
