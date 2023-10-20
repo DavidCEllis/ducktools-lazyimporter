@@ -1,6 +1,7 @@
 [build-system]
 requires = [
-    "setuptools",
+    "setuptools>=61.0",
+    "wheel",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -23,7 +24,7 @@ classifiers = [
 dynamic = ['version']
 
 [project.optional-dependencies]
-testing = ["pytest"]
+testing = ["pytest", "pytest-cov"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
