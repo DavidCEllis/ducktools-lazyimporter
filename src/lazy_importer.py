@@ -18,7 +18,6 @@ __all__ = [
 
 class _ImportBase(abc.ABC):
     module_name: str
-    import_level: int
 
     @property
     def module_name_noprefix(self):
@@ -209,15 +208,6 @@ class MultiFromImport(_ImportBase):
             )
         return NotImplemented
 
-    def as_from_imports(self) -> list[FromImport]:
-        from_imports = []
-        for name in self.attrib_names:
-            if isinstance(name, str):
-                from_imports.append(FromImport(self.module_name, name))
-            else:
-                from_imports.append(FromImport(self.module_name, name[0], name[1]))
-        return from_imports
-
     @property
     def asnames(self):
         """
@@ -334,15 +324,17 @@ class _ImporterGrouper:
 
         ModuleImport instances with the same base module and no 'asname' are grouped in
         order to allow access to any of the submodules. As there is no way to know which
-        submodule is being accessed all are imported when the base module is first accessed.
+        submodule is being accessed all are imported when the base module is first
+        accessed.
 
-        This is kept outside of the LazyImporter class to keep the namespace of LazyImporter
-        minimal. It should be called when the `_importers` attribute is first accessed on
-        an instance.
+        This is kept outside of the LazyImporter class to keep the namespace of
+        LazyImporter minimal. It should be called when the `_importers` attribute
+        is first accessed on an instance.
 
         :param inst: LazyImporter instance
         :type inst: LazyImporter
-        :return: lazy importers attribute dict mapping to the objects that perform the imports
+        :return: lazy importers attribute dict mapping to the objects that
+                 perform the imports
         :rtype: dict[str, _ImportBase]
         """
         importers = {}
