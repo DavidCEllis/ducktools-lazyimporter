@@ -23,7 +23,7 @@ classifiers = [
 dynamic = ['version']
 
 [project.optional-dependencies]
-TEST = ["pytest"]
+testing = ["pytest"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
