@@ -26,7 +26,7 @@ when first accessed.
 import abc
 import sys
 
-__version__ = "v0.1.0"
+__version__ = "v0.1.1"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
@@ -86,7 +86,7 @@ class _ImportBase(abc.ABC):
 
 class ModuleImport(_ImportBase):
     module_name: str
-    asname: None | str
+    asname: "None | str"
 
     def __init__(self, module_name, asname=None):
         """
@@ -197,7 +197,7 @@ class FromImport(_ImportBase):
 
 class MultiFromImport(_ImportBase):
     module_name: str
-    attrib_names: list[str | tuple[str, str]]
+    attrib_names: "list[str | tuple[str, str]]"
 
     def __init__(self, module_name, attrib_names):
         """
@@ -271,7 +271,7 @@ class MultiFromImport(_ImportBase):
 
 class _SubmoduleImports(_ImportBase):
     module_name: str
-    submodules: set[str]
+    submodules: "set[str]"
 
     def __init__(self, module_name, submodules=None):
         """
@@ -361,7 +361,7 @@ class _ImporterGrouper:
         importers = {}
 
         for imp in inst._imports:  # noqa
-            if imp.import_level > 0 and inst._globals is None:
+            if imp.import_level > 0 and inst._globals is None:  # noqa
                 raise ValueError(
                     "Attempted to setup relative import without providing globals()."
                 )
@@ -409,7 +409,7 @@ class _ImporterGrouper:
 
 
 class LazyImporter:
-    _imports: list[ModuleImport | FromImport | MultiFromImport]
+    _imports: "list[ModuleImport | FromImport | MultiFromImport]"
     _globals: dict
 
     _importers = _ImporterGrouper()
