@@ -26,7 +26,7 @@ when first accessed.
 import abc
 import sys
 
-__version__ = "v0.1.0"
+__version__ = "v0.1.1"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
