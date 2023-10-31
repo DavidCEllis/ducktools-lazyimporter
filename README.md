@@ -115,6 +115,89 @@ laz = LazyImporter(
 __getattr__, __dir__ = get_module_funcs(laz, __name__)
 ```
 
+## The import classes ##
+
+In all of these instances `modules` is intended as the first argument
+to `LazyImporter` and all attributes would be accessed from the 
+`LazyImporter` instance and not in the global namespace.
+
+eg:
+```python
+modules = [ModuleImport("functools")]
+laz = LazyImporter(modules)
+laz.functools  # provides access to the module "functools"
+```
+
+### ModuleImport ###
+
+`ModuleImport` is used for your basic module style imports.
+
+```python
+modules = [
+    ModuleImport("module"),
+    ModuleImport("other_module", "other_name"),
+    ModuleImport("base_module.submodule"),
+    ModuleImport("base_module.submodule", "short_name"),
+]
+```
+
+is equivalent to 
+
+```
+import module
+import other_module as other_name
+import base_module.submodule
+import base_module.submodule as short_name
+```
+
+when provided to a LazyImporter.
+
+### FromImport and MultiFromImport ###
+
+`FromImport` is used for standard 'from' imports.
+
+```python
+modules = [
+    FromImport("dataclasses", "dataclass"),
+    FromImport("functools", "partial", "partfunc"),
+    MultiFromImport("collections", ["namedtuple", ("defaultdict", "dd")]),
+]
+```
+
+is equivalent to
+
+```python
+from dataclasses import dataclass
+from functools import partial as partfunc
+from collections import namedtuple, defaultdict as dd
+```
+
+when provided to a LazyImporter.
+
+### TryExceptImport ###
+
+`TryExceptImport` is used for compatibility where a module may not be available
+and so a fallback module providing the same functionality should be used. For
+example when a newer version of python has a stdlib module that has replaced
+a third party module that was used previously.
+
+```python
+modules = [
+    TryExceptImport("tomllib", "tomli", "tomllib"),
+]
+```
+
+is equivalent to
+
+```python
+try:
+    import tomllib as tomllib
+except ImportError:
+    import tomli as tomllib
+```
+
+when provided to a LazyImporter.
+
 ## Demonstration of when imports occur ##
 
 ```python
