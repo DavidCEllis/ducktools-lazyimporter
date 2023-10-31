@@ -3,6 +3,8 @@ from ducktools.lazyimporter import (
     FromImport,
 )
 
+name = "ex_othermod"
+
 laz = LazyImporter(
     [FromImport("..ex_mod.ex_submod", "name")],
     globs=globals(),

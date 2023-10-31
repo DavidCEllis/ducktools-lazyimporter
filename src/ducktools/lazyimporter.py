@@ -26,12 +26,13 @@ when first accessed.
 import abc
 import sys
 
-__version__ = "v0.1.1"
+__version__ = "v0.1.2"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
     "FromImport",
     "MultiFromImport",
+    "TryExceptImport",
     "get_importer_state",
     "get_module_funcs",
 ]
@@ -115,24 +116,21 @@ class ModuleImport(_ImportBase):
         return NotImplemented
 
     def do_import(self, globs=None):
-        try:  # Already imported
-            mod = sys.modules[self.module_name_noprefix]
-        except KeyError:
-            mod = __import__(
-                self.module_name_noprefix,
-                globals=globs,
-                level=self.import_level,
-            )
+        mod = __import__(
+            self.module_name_noprefix,
+            globals=globs,
+            level=self.import_level,
+        )
 
-            if self.asname:  # return the submodule
-                submod_used = [self.module_basename]
-                for submod in self.submodule_names:
-                    submod_used.append(submod)
-                    try:
-                        mod = getattr(mod, submod)
-                    except AttributeError:
-                        invalid_module = ".".join(submod_used)
-                        raise ModuleNotFoundError(f"No module named {invalid_module!r}")
+        if self.asname:  # return the submodule
+            submod_used = [self.module_basename]
+            for submod in self.submodule_names:
+                submod_used.append(submod)
+                try:
+                    mod = getattr(mod, submod)
+                except AttributeError:
+                    invalid_module = ".".join(submod_used)
+                    raise ModuleNotFoundError(f"No module named {invalid_module!r}")
 
         if self.asname:
             return {self.asname: mod}
@@ -180,17 +178,13 @@ class FromImport(_ImportBase):
         return NotImplemented
 
     def do_import(self, globs=None):
-        try:
-            # Module already imported
-            mod = sys.modules[self.module_name]
-        except KeyError:
-            # Perform the import
-            mod = __import__(
-                self.module_name_noprefix,
-                globals=globs,
-                fromlist=[self.attrib_name],
-                level=self.import_level,
-            )
+        # Perform the import
+        mod = __import__(
+            self.module_name_noprefix,
+            globals=globs,
+            fromlist=[self.attrib_name],
+            level=self.import_level,
+        )
 
         return {self.asname: getattr(mod, self.attrib_name)}
 
@@ -248,17 +242,13 @@ class MultiFromImport(_ImportBase):
     def do_import(self, globs=None):
         from_imports = {}
 
-        try:
-            # Module already imported
-            mod = sys.modules[self.module_name]
-        except KeyError:
-            # Perform the import
-            mod = __import__(
-                self.module_name_noprefix,
-                globals=globs,
-                fromlist=self.asnames,
-                level=self.import_level,
-            )
+        # Perform the import
+        mod = __import__(
+            self.module_name_noprefix,
+            globals=globs,
+            fromlist=self.asnames,
+            level=self.import_level,
+        )
 
         for name in self.attrib_names:
             if isinstance(name, str):
@@ -267,6 +257,118 @@ class MultiFromImport(_ImportBase):
                 from_imports[name[1]] = getattr(mod, name[0])
 
         return from_imports
+
+
+class TryExceptImport(_ImportBase):
+    module_name: str
+    except_module: str
+    asname: str
+
+    def __init__(self, module_name, except_module, asname):
+        """
+        Equivalent to:
+
+        try:
+            import <module_name> as <asname>
+        except ImportError:
+            import <except_module> as <asname>
+
+        Inside a LazyImporter
+
+        :param module_name: Name of the 'try' module
+        :param except_module: Name of the module to import in the case
+                              that the 'try' module fails
+        :param asname: Name to use for either on successful import
+        """
+        self.module_name = module_name
+        self.except_module = except_module
+        self.asname = asname
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}("
+            f"module_name={self.module_name!r}, "
+            f"except_module={self.except_module!r}, "
+            f"asname={self.asname!r}"
+            f")"
+        )
+
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return (self.module_name, self.except_module, self.asname) == (
+                other.module_name,
+                other.except_module,
+                other.asname,
+            )
+        return NotImplemented
+
+    @property
+    def except_import_level(self):
+        level = 0
+        for char in self.except_module:
+            if char != ".":
+                break
+            level += 1
+        return level
+
+    @property
+    def except_module_noprefix(self):
+        """
+        Remove any leading '.' characters from the except_module name.
+        :return:
+        """
+        return self.except_module.lstrip(".")
+
+    @property
+    def except_module_basename(self):
+        """
+        Get the first part of an except module import name.
+        eg: 'importlib' from 'importlib.util'
+
+        :return: name of base module
+        :rtype: str
+        """
+        return self.except_module_noprefix.split(".")[0]
+
+    @property
+    def except_module_names(self):
+        """
+        Get a list of all except submodule names in order.
+        eg: ['util'] from 'importlib.util'
+        :return: List of submodule names.
+        :rtype: list[str]
+        """
+        return self.except_module_noprefix.split(".")[1:]
+
+    def do_import(self, globs=None):
+        try:
+            mod = __import__(
+                self.module_name_noprefix,
+                globals=globs,
+                level=self.import_level,
+            )
+        except ImportError:
+            mod = __import__(
+                self.except_module_noprefix,
+                globals=globs,
+                level=self.except_import_level,
+            )
+            submod_used = [self.except_module_basename]
+            submodule_names = self.except_module_names
+
+        else:
+            submod_used = [self.module_basename]
+            submodule_names = self.submodule_names
+
+        for submod in submodule_names:
+            submod_used.append(submod)
+            try:
+                mod = getattr(mod, submod)
+            except AttributeError:
+                invalid_module = ".".join(submod_used)
+                raise ModuleNotFoundError(f"No module named {invalid_module!r}")
+
+        return {self.asname: mod}
 
 
 class _SubmoduleImports(_ImportBase):
@@ -304,22 +406,18 @@ class _SubmoduleImports(_ImportBase):
 
     def do_import(self, globs=None):
         for submod in self.submodules:  # Make sure any submodules are in place
-            try:
-                _ = sys.modules[submod]
-            except KeyError:
-                __import__(
-                    submod,
-                    globals=globs,
-                    level=self.import_level,
-                )
-        try:
-            mod = sys.modules[self.module_basename]
-        except KeyError:
-            mod = __import__(
-                self.module_basename,
+            __import__(
+                submod,
                 globals=globs,
                 level=self.import_level,
             )
+
+        mod = __import__(
+            self.module_basename,
+            globals=globs,
+            level=self.import_level,
+        )
+
         return {self.module_name: mod}
 
 
@@ -403,13 +501,14 @@ class _ImporterGrouper:
                         )
             else:
                 raise TypeError(
-                    f"{imp} is not an instance of ModuleImport or FromImport"
+                    f"{imp} is not an instance of "
+                    f"ModuleImport, FromImport, MultiFromImport or TryExceptImport"
                 )
         return importers
 
 
 class LazyImporter:
-    _imports: "list[ModuleImport | FromImport | MultiFromImport]"
+    _imports: "list[ModuleImport | FromImport | MultiFromImport | TryExceptImport]"
     _globals: dict
 
     _importers = _ImporterGrouper()
@@ -422,7 +521,7 @@ class LazyImporter:
         globals() must be provided to the importer if relative imports are used.
 
         :param imports: list of imports
-        :type imports: list[ModuleImport | FromImport | MultiFromImport]
+        :type imports: list[ModuleImport | FromImport | MultiFromImport | TryExceptImport]
         :param globs: globals object for relative imports
         :type globs: dict[str, typing.Any]
         """
