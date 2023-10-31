@@ -6,7 +6,8 @@ from ducktools.lazyimporter import (
     LazyImporter,
     ModuleImport,
     FromImport,
-    MultiFromImport
+    MultiFromImport,
+    TryExceptImport,
 )
 
 
@@ -68,6 +69,22 @@ def test_submod_multifrom():
 
     assert laz.name == "ex_submod"
     assert laz.othername == "ex_submod2"
+
+
+def test_try_except_import():
+    # When the first import fails
+    laz = LazyImporter([
+        TryExceptImport("module_does_not_exist", "ex_mod", "ex_mod"),
+    ])
+
+    assert laz.ex_mod.name == "ex_mod"
+
+    # When the first import succeeds
+    laz2 = LazyImporter([
+        TryExceptImport("ex_mod", "ex_othermod", "ex_mod"),
+    ])
+
+    assert laz2.ex_mod.name == "ex_mod"
 
 
 def test_relative_import():
