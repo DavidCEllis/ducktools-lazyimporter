@@ -9,6 +9,7 @@ scratch/
 build/
 _build/
 dist/
+htmlcov/
 
 .vscode/
 __pycache__/
