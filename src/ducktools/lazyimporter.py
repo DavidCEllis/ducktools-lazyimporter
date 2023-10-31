@@ -295,7 +295,11 @@ class TryExceptImport(_ImportBase):
 
     def __eq__(self, other):
         if self.__class__ is other.__class__:
-            return (self.module_name, self.except_module, self.asname) == (other.module_name, other.except_module, other.asname)
+            return (self.module_name, self.except_module, self.asname) == (
+                other.module_name,
+                other.except_module,
+                other.asname,
+            )
         return NotImplemented
 
     @property
@@ -347,7 +351,7 @@ class TryExceptImport(_ImportBase):
             mod = __import__(
                 self.except_module_noprefix,
                 globals=globs,
-                level=self.except_import_level
+                level=self.except_import_level,
             )
             submod_used = [self.except_module_basename]
             submodule_names = self.except_module_names
