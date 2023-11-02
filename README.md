@@ -49,7 +49,7 @@ Yes.
 But...
 
 Most implementations rely on stdlib modules that are themselves slow to import
-(for example: typing, importlib.util, logging).
+(for example: typing, importlib.util, logging, inspect, ast).
 By contrast `lazyimporter` only uses modules that python imports on launch
 as part of `site`.
 
@@ -123,6 +123,8 @@ to `LazyImporter` and all attributes would be accessed from the
 
 eg:
 ```python
+from ducktools.lazyimporter import LazyImporter, ModuleImport
+
 modules = [ModuleImport("functools")]
 laz = LazyImporter(modules)
 laz.functools  # provides access to the module "functools"
@@ -133,6 +135,8 @@ laz.functools  # provides access to the module "functools"
 `ModuleImport` is used for your basic module style imports.
 
 ```python
+from ducktools.lazyimporter import ModuleImport
+
 modules = [
     ModuleImport("module"),
     ModuleImport("other_module", "other_name"),
@@ -154,9 +158,13 @@ when provided to a LazyImporter.
 
 ### FromImport and MultiFromImport ###
 
-`FromImport` is used for standard 'from' imports.
+`FromImport` is used for standard 'from' imports, `MultiFromImport` for importing
+multiple items from the same module. By using a `MultiFromImport`, when the first
+attribute is accessed, all will be assigned on the LazyImporter.
 
 ```python
+from ducktools.lazyimporter import FromImport, MultiFromImport
+
 modules = [
     FromImport("dataclasses", "dataclass"),
     FromImport("functools", "partial", "partfunc"),
@@ -182,6 +190,8 @@ example when a newer version of python has a stdlib module that has replaced
 a third party module that was used previously.
 
 ```python
+from ducktools.lazyimporter import TryExceptImport
+
 modules = [
     TryExceptImport("tomllib", "tomli", "tomllib"),
 ]
@@ -198,7 +208,46 @@ except ImportError:
 
 when provided to a LazyImporter.
 
-## Demonstration of when imports occur ##
+## How does it work ##
+
+The following lazy importer:
+
+```python
+from ducktools.lazyimporter import LazyImporter, FromImport
+
+laz = LazyImporter([FromImport("functools", "partial")])
+```
+
+Generates an object that's roughly equivalent to this:
+
+```python
+class SpecificLazyImporter:
+    def __getattr__(self, name):
+        if name == "partial":
+            from functools import partial
+            setattr(self, name, partial)
+            return partial
+        
+        raise AttributeError(...)
+
+laz = SpecificLazyImporter()
+```
+
+The first time the attribute is accessed the import is done and the output
+is stored on the instance, so repeated access immediately gets the desired 
+object and the import mechanism is only invoked once.
+
+(The actual `__getattr__` function uses a dictionary lookup and delegates importing
+to the FromImport class. Names are all dynamic and imports are done through
+the `__import__` function.)
+
+## Examining the importer state ##
+
+The function `get_importer_state` is provided to show the state
+of the lazy importer, showing which imports have run and which
+are still deferred.
+
+For example:
 
 ```python
 from ducktools.lazyimporter import (
