@@ -447,7 +447,7 @@ class _ImporterGrouper:
             importers = self.group_importers(inst)
             setattr(inst, self._name, importers)
             return importers
-        return self
+        return self  # pragma: no cover
 
     @staticmethod
     def group_importers(inst):
