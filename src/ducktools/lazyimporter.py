@@ -138,7 +138,7 @@ class ModuleImport(_ImportBase):
 
         if self.asname:
             return {self.asname: mod}
-        else:
+        else:  # pragma: no cover
             return {self.module_basename: mod}
 
 
