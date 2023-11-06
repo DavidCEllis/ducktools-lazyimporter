@@ -5,9 +5,9 @@ from ducktools.lazyimporter import (
     FromImport,
     MultiFromImport,
     TryExceptImport,
-    LazyImporter,
     _SubmoduleImports,
-    MultiFromImport,
+    _ImporterGrouper,
+    LazyImporter,
 )
 
 
@@ -255,3 +255,10 @@ class TestLevels:
 
         assert tryexcept_imp_level.import_level == 2
         assert tryexcept_imp_level.except_import_level == 3
+
+
+def test_import_grouper_access():
+    """
+    Test that the ImporterGrouper has been placed on the class
+    """
+    assert isinstance(LazyImporter._importers, _ImporterGrouper)
