@@ -102,6 +102,14 @@ class ModuleImport(_ImportBase):
         self.module_name = module_name
         self.asname = asname
 
+        if self.import_level > 0 and asname is None:
+            raise ValueError(
+                "Relative imports are not allowed without an assigned name."
+            )
+
+        if self.asname is not None and not asname.isidentifier():
+            raise ValueError(f"{self.asname!r} is not a valid Python identifier.")
+
     def __repr__(self):
         return (
             f"{self.__class__.__name__}("
@@ -126,11 +134,7 @@ class ModuleImport(_ImportBase):
             submod_used = [self.module_basename]
             for submod in self.submodule_names:
                 submod_used.append(submod)
-                try:
-                    mod = getattr(mod, submod)
-                except AttributeError:
-                    invalid_module = ".".join(submod_used)
-                    raise ModuleNotFoundError(f"No module named {invalid_module!r}")
+                mod = getattr(mod, submod)
 
         if self.asname:
             return {self.asname: mod}
@@ -158,6 +162,9 @@ class FromImport(_ImportBase):
         self.module_name = module_name
         self.attrib_name = attrib_name
         self.asname = asname if asname is not None else attrib_name
+
+        if not self.asname.isidentifier():
+            raise ValueError(f"{self.asname!r} is not a valid Python identifier.")
 
     def __repr__(self):
         return (
@@ -208,6 +215,10 @@ class MultiFromImport(_ImportBase):
         self.module_name = module_name
         self.attrib_names = attrib_names
 
+        for name in self.asnames:
+            if not name.isidentifier():
+                raise ValueError(f"{name!r} is not a valid Python identifier.")
+
     def __repr__(self):
         return (
             f"{self.__class__.__name__}("
@@ -226,6 +237,7 @@ class MultiFromImport(_ImportBase):
     @property
     def asnames(self):
         """
+        Get a list of all the names that will be assigned by this importer
 
         :return: list of 'asname' names to give as 'dir' for LazyImporter bindings
         :rtype: list[str]
@@ -276,13 +288,19 @@ class TryExceptImport(_ImportBase):
         Inside a LazyImporter
 
         :param module_name: Name of the 'try' module
+        :type module_name: str
         :param except_module: Name of the module to import in the case
                               that the 'try' module fails
+        :type except_module: str
         :param asname: Name to use for either on successful import
+        :type asname: str
         """
         self.module_name = module_name
         self.except_module = except_module
         self.asname = asname
+
+        if not self.asname.isidentifier():
+            raise ValueError(f"{self.asname!r} is not a valid Python identifier.")
 
     def __repr__(self):
         return (
@@ -362,11 +380,7 @@ class TryExceptImport(_ImportBase):
 
         for submod in submodule_names:
             submod_used.append(submod)
-            try:
-                mod = getattr(mod, submod)
-            except AttributeError:
-                invalid_module = ".".join(submod_used)
-                raise ModuleNotFoundError(f"No module named {invalid_module!r}")
+            mod = getattr(mod, submod)
 
         return {self.asname: mod}
 
@@ -459,7 +473,7 @@ class _ImporterGrouper:
         importers = {}
 
         for imp in inst._imports:  # noqa
-            if imp.import_level > 0 and inst._globals is None:  # noqa
+            if getattr(imp, "import_level", 0) > 0 and inst._globals is None:  # noqa
                 raise ValueError(
                     "Attempted to setup relative import without providing globals()."
                 )
@@ -501,7 +515,7 @@ class _ImporterGrouper:
                         )
             else:
                 raise TypeError(
-                    f"{imp} is not an instance of "
+                    f"{imp!r} is not an instance of "
                     f"ModuleImport, FromImport, MultiFromImport or TryExceptImport"
                 )
         return importers
@@ -513,7 +527,7 @@ class LazyImporter:
 
     _importers = _ImporterGrouper()
 
-    def __init__(self, imports, *, globs=None):
+    def __init__(self, imports, *, globs=None, eager_process=False):
         """
         Create a LazyImporter to import modules and objects when they are accessed
         on this importer object.
@@ -524,10 +538,15 @@ class LazyImporter:
         :type imports: list[ModuleImport | FromImport | MultiFromImport | TryExceptImport]
         :param globs: globals object for relative imports
         :type globs: dict[str, typing.Any]
+        :param eager_process: filter and check the imports eagerly
+        :type eager_process: bool
         """
         # Keep original imports for __repr__
         self._imports = imports
         self._globals = globs
+
+        if eager_process:
+            _ = self._importers
 
     def __getattr__(self, name):
         # This performs the imports associated with the name of the attribute
@@ -553,7 +572,11 @@ class LazyImporter:
         return sorted(self._importers.keys())
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(imports={self._imports!r})"
+        return (
+            f"{self.__class__.__name__}"
+            f"(imports={self._imports!r}, "
+            f"globs={self._globals!r})"
+        )
 
 
 def get_importer_state(importer):
@@ -565,10 +588,16 @@ def get_importer_state(importer):
     :return: Dict of imported_modules and lazy_modules
     :rtype: dict[str, dict[str, typing.Any] | list[str]]
     """
+    # Get the dir *before* looking at __dict__
+    # Calling 'dir' in the block would cause the __dict__ size to change
+    # And fail iteration
+    importer_dir = dir(importer)
+
     imported_attributes = {
-        k: v for k, v in importer.__dict__.items() if k in dir(importer)
+        k: v for k, v in importer.__dict__.items() if k in importer_dir
     }
-    lazy_attributes = [k for k in dir(importer) if k not in imported_attributes]
+
+    lazy_attributes = [k for k in importer_dir if k not in imported_attributes]
 
     return {
         "imported_attributes": imported_attributes,

@@ -22,6 +22,19 @@ class TestImporterDunders:
 
         assert mod1 != mod2
 
+        mod3 = ModuleImport("collections", "c")
+        assert mod3 == mod2
+
+    def test_equal_submod_import(self):
+        mod1 = _SubmoduleImports("importlib", {"importlib.util"})
+        mod2 = _SubmoduleImports("importlib", {"importlib.util"})
+
+        assert mod1 == mod2
+
+        mod3 = _SubmoduleImports("importlib", set())
+
+        assert mod1 != mod3
+
     def test_equal_from(self):
         from1 = FromImport("collections", "namedtuple")
         from2 = FromImport("collections", "namedtuple")
@@ -56,8 +69,9 @@ class TestImporterDunders:
         from1 = FromImport("collections", "namedtuple")
         mf1 = MultiFromImport("collections", ["namedtuple", "defaultdict"])
         te1 = TryExceptImport("tomllib", "tomli", "tomllib")
+        subm1 = _SubmoduleImports("importlib", {"importlib.util"})
 
-        combs = itertools.combinations([mod1, from1, mf1, te1], 2)
+        combs = itertools.combinations([mod1, from1, mf1, te1, subm1], 2)
 
         for i1, i2 in combs:
             assert i1 != i2
@@ -103,113 +117,141 @@ class TestImporterDunders:
 
         assert repr(te1) == te1str
 
+    def test_import_repr_submod(self):
+        subm1 = _SubmoduleImports(
+            module_name='importlib',
+            submodules={'importlib.util'},
+        )
+        subm1str = (
+            "_SubmoduleImports("
+            "module_name='importlib', "
+            "submodules={'importlib.util'})"
+        )
+        assert repr(subm1) == subm1str
 
-def test_no_duplication():
-    importer = LazyImporter([ModuleImport("collections"), ModuleImport("collections")])
+    def test_importer_repr(self):
+        globs = globals()
+        imports = [ModuleImport("functools"), FromImport("collections", "namedtuple")]
+        laz = LazyImporter(imports=imports, globs=globs)
 
-    assert dir(importer) == ["collections"]
-    assert importer._importers == {"collections": _SubmoduleImports("collections")}
+        laz_str = f"LazyImporter(imports={imports!r}, globs={globs!r})"
 
-
-def test_submodule_gather():
-    importer = LazyImporter(
-        [
-            ModuleImport("collections.abc"),
-        ]
-    )
-
-    assert dir(importer) == ["collections"]
-
-    assert importer._importers == {
-        "collections": _SubmoduleImports("collections", {"collections.abc"})
-    }
-
-
-def test_asname_gather():
-    importer = LazyImporter(
-        [
-            ModuleImport("collections.abc", "abc"),
-        ]
-    )
-
-    assert dir(importer) == ["abc"]
-    assert importer._importers == {"abc": ModuleImport("collections.abc", "abc")}
+        assert repr(laz) == laz_str
 
 
-def test_from_gather():
-    importer = LazyImporter(
-        [
-            FromImport("dataclasses", "dataclass"),
-            FromImport("dataclasses", "dataclass", "dc"),
-        ]
-    )
+class TestGatherImports:
+    def test_no_duplication(self):
+        importer = LazyImporter(
+            [ModuleImport("collections"), ModuleImport("collections")]
+        )
 
-    assert dir(importer) == ["dataclass", "dc"]
+        assert dir(importer) == ["collections"]
+        assert importer._importers == {"collections": _SubmoduleImports("collections")}
 
-    assert importer._importers == {
-        "dataclass": FromImport("dataclasses", "dataclass"),
-        "dc": FromImport("dataclasses", "dataclass", "dc"),
-    }
+    def test_submodule_gather(self):
+        importer = LazyImporter(
+            [
+                ModuleImport("collections.abc"),
+            ]
+        )
+
+        assert dir(importer) == ["collections"]
+
+        assert importer._importers == {
+            "collections": _SubmoduleImports("collections", {"collections.abc"})
+        }
+
+    def test_asname_gather(self):
+        importer = LazyImporter(
+            [
+                ModuleImport("collections.abc", "abc"),
+            ]
+        )
+
+        assert dir(importer) == ["abc"]
+        assert importer._importers == {"abc": ModuleImport("collections.abc", "abc")}
+
+    def test_from_gather(self):
+        importer = LazyImporter(
+            [
+                FromImport("dataclasses", "dataclass"),
+                FromImport("dataclasses", "dataclass", "dc"),
+            ]
+        )
+
+        assert dir(importer) == ["dataclass", "dc"]
+
+        assert importer._importers == {
+            "dataclass": FromImport("dataclasses", "dataclass"),
+            "dc": FromImport("dataclasses", "dataclass", "dc"),
+        }
+
+    def test_mixed_gather(self):
+        importer = LazyImporter(
+            [
+                ModuleImport("collections"),
+                ModuleImport("collections.abc"),
+                ModuleImport("functools", "ft"),
+                FromImport("dataclasses", "dataclass"),
+                FromImport("typing", "NamedTuple", "nt"),
+            ]
+        )
+
+        assert dir(importer) == ["collections", "dataclass", "ft", "nt"]
+
+        assert importer._importers == {
+            "collections": _SubmoduleImports("collections", {"collections.abc"}),
+            "dataclass": FromImport("dataclasses", "dataclass"),
+            "ft": ModuleImport("functools", "ft"),
+            "nt": FromImport("typing", "NamedTuple", "nt"),
+        }
+
+    def test_multi_from(self):
+        multi_from = MultiFromImport(
+            "collections", ["defaultdict", ("namedtuple", "nt"), "OrderedDict"]
+        )
+        from_imp = FromImport("functools", "partial")
+        mod_imp = ModuleImport("importlib.util")
+
+        # Resulting submodule import
+        submod_imp = _SubmoduleImports("importlib", {"importlib.util"})
+
+        importer = LazyImporter([multi_from, from_imp, mod_imp])
+
+        assert dir(importer) == sorted(
+            ["defaultdict", "nt", "OrderedDict", "partial", "importlib"]
+        )
+
+        assert importer._importers == {
+            "defaultdict": multi_from,
+            "nt": multi_from,
+            "OrderedDict": multi_from,
+            "partial": from_imp,
+            "importlib": submod_imp,
+        }
 
 
-def test_mixed_gather():
-    importer = LazyImporter(
-        [
-            ModuleImport("collections"),
-            ModuleImport("collections.abc"),
-            ModuleImport("functools", "ft"),
-            FromImport("dataclasses", "dataclass"),
-            FromImport("typing", "NamedTuple", "nt"),
-        ]
-    )
+class TestLevels:
+    def test_relative_fromimport_basename(self):
+        from_imp_level0 = FromImport("mod", "obj")
+        from_imp_level1 = FromImport(".mod", "obj")
+        from_imp_level2 = FromImport("..mod", "obj")
 
-    assert dir(importer) == ["collections", "dataclass", "ft", "nt"]
+        assert from_imp_level0.import_level == 0
+        assert from_imp_level1.import_level == 1
+        assert from_imp_level2.import_level == 2
 
-    assert importer._importers == {
-        "collections": _SubmoduleImports("collections", {"collections.abc"}),
-        "dataclass": FromImport("dataclasses", "dataclass"),
-        "ft": ModuleImport("functools", "ft"),
-        "nt": FromImport("typing", "NamedTuple", "nt"),
-    }
+        assert (
+            from_imp_level0.module_name_noprefix
+            == from_imp_level1.module_name_noprefix
+            == from_imp_level2.module_name_noprefix
+            == "mod"
+        )
 
+    def test_relative_exceptimport_basename(self):
+        tryexcept_imp_level = TryExceptImport(
+            "..submodreal", "...submodexcept", "asname"
+        )
 
-def test_multi_from():
-    multi_from = MultiFromImport(
-        "collections", ["defaultdict", ("namedtuple", "nt"), "OrderedDict"]
-    )
-    from_imp = FromImport("functools", "partial")
-    mod_imp = ModuleImport("importlib.util")
-
-    # Resulting submodule import
-    submod_imp = _SubmoduleImports("importlib", {"importlib.util"})
-
-    importer = LazyImporter([multi_from, from_imp, mod_imp])
-
-    assert dir(importer) == sorted(
-        ["defaultdict", "nt", "OrderedDict", "partial", "importlib"]
-    )
-
-    assert importer._importers == {
-        "defaultdict": multi_from,
-        "nt": multi_from,
-        "OrderedDict": multi_from,
-        "partial": from_imp,
-        "importlib": submod_imp,
-    }
-
-
-def test_relative_basename():
-    from_imp_level0 = FromImport("mod", "obj")
-    from_imp_level1 = FromImport(".mod", "obj")
-    from_imp_level2 = FromImport("..mod", "obj")
-
-    assert from_imp_level0.import_level == 0
-    assert from_imp_level1.import_level == 1
-    assert from_imp_level2.import_level == 2
-
-    assert (
-        from_imp_level0.module_name_noprefix
-        == from_imp_level1.module_name_noprefix
-        == from_imp_level2.module_name_noprefix
-        == "mod"
-    )
+        assert tryexcept_imp_level.import_level == 2
+        assert tryexcept_imp_level.except_import_level == 3

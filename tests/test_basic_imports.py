@@ -127,6 +127,20 @@ class TestDirectImports:
 
         assert laz2.ex_mod.name == "ex_mod"
 
+    def test_try_except_submod_import(self):
+        """
+        Test a try/except import with submodules
+        """
+        laz = LazyImporter(
+            [
+                TryExceptImport(
+                    "module_does_not_exist", "ex_mod.ex_submod", "ex_submod"
+                ),
+            ]
+        )
+
+        assert laz.ex_submod.name == "ex_submod"
+
 
 class TestRelativeImports:
     def test_relative_import(self):
