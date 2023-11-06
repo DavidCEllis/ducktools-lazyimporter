@@ -219,7 +219,7 @@ class MultiFromImport(_ImportBase):
         if self.__class__ is other.__class__:
             return (self.module_name, self.attrib_names) == (
                 other.module_name,
-                self.attrib_names,
+                other.attrib_names,
             )
         return NotImplemented
 
