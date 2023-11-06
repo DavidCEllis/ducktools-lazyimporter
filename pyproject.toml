@@ -34,3 +34,6 @@ where = ["src"]
 
 [tool.setuptools.dynamic]
 version = {attr = "ducktools.lazyimporter.__version__"}
+
+[tool.black]
+skip-string-normalization = true

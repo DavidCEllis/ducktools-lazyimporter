@@ -62,6 +62,47 @@ class TestImporterDunders:
         for i1, i2 in combs:
             assert i1 != i2
 
+    def test_import_repr_module(self):
+        mod1 = ModuleImport(module_name='collections', asname=None)
+        mod1str = "ModuleImport(module_name='collections', asname=None)"
+
+        assert repr(mod1) == mod1str
+
+    def test_import_repr_from(self):
+        from1 = FromImport(
+            module_name='collections', attrib_name='namedtuple', asname='namedtuple'
+        )
+        from1str = (
+            "FromImport(module_name='collections', "
+            "attrib_name='namedtuple', "
+            "asname='namedtuple')"
+        )
+
+        assert repr(from1) == from1str
+
+    def test_import_repr_multifrom(self):
+        mf1 = MultiFromImport(
+            module_name='collections', attrib_names=['namedtuple', 'defaultdict']
+        )
+        mf1str = (
+            "MultiFromImport(module_name='collections', "
+            "attrib_names=['namedtuple', 'defaultdict'])"
+        )
+        assert repr(mf1) == mf1str
+
+    def test_import_repr_tryexcept(self):
+        te1 = TryExceptImport(
+            module_name='tomllib', except_module='tomli', asname='tomllib'
+        )
+        te1str = (
+            "TryExceptImport("
+            "module_name='tomllib', "
+            "except_module='tomli', "
+            "asname='tomllib')"
+        )
+
+        assert repr(te1) == te1str
+
 
 def test_no_duplication():
     importer = LazyImporter([ModuleImport("collections"), ModuleImport("collections")])
