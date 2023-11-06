@@ -156,4 +156,4 @@ class TestRelativeImports:
     def test_submod_relative_import(self):
         from example_modules.ex_othermod import laz
 
-        assert laz.name == "ex_submod"
+        assert laz.submod_name == "ex_submod"

@@ -48,3 +48,14 @@ class TestModuleFuncs:
         _, dir_func = get_module_funcs(laz)
 
         assert dir_func() == ["collections"]
+
+    def test_getattr_module_func(self):
+        import example_modules.ex_othermod as ex_othermod  # noqa  # pyright: ignore
+
+        assert ex_othermod.submod_name == "ex_submod"
+
+    def test_dir_module_func(self):
+        import example_modules.ex_othermod as ex_othermod  # noqa  # pyright: ignore
+
+        assert "name" in dir(ex_othermod)
+        assert "submod_name" in dir(ex_othermod)
