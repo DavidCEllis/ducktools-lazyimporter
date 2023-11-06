@@ -11,94 +11,123 @@ from ducktools.lazyimporter import (
 )
 
 
-def test_imports_lazy():
-    laz = LazyImporter([
-        ModuleImport("example_1"),
-        FromImport("example_2", "item", asname="i"),
-    ])
+class TestDirectImports:
+    def test_module_import(self):
+        """
+        Test Basic Module import occurs when expected
+        """
+        laz = LazyImporter(
+            [
+                ModuleImport("example_1"),
+            ]
+        )
 
-    assert "example_1" not in sys.modules
-    assert "example_2" not in sys.modules
-    laz.example_1
-    assert "example_1" in sys.modules
-    assert "example_2" not in sys.modules
-    laz.i
-    assert "example_2" in sys.modules
+        assert "example_1" not in sys.modules
+        laz.example_1
+        assert "example_1" in sys.modules
 
-    assert laz.i == "example"
+        # Check the import is the correct object
+        import example_1  # noqa  # pyright: ignore
 
-    # Check the imports are the correct objects
-    import example_1  # noqa
-    import example_2  # noqa
+        assert example_1 is laz.example_1
 
-    assert example_1 is laz.example_1
-    assert example_2.item is laz.i
+    def test_from_import(self):
+        """
+        Test a basic from import from a module
+        """
+        laz = LazyImporter(
+            [
+                FromImport("example_2", "item", asname="i"),
+            ]
+        )
+
+        assert "example_2" not in sys.modules
+        laz.i
+        assert "example_2" in sys.modules
+
+        assert laz.i == "example"
+
+        import example_2  # noqa  # pyright: ignore
+
+        assert example_2.item is laz.i
+
+    def test_imports_submod(self):
+        """
+        Test submodules are only imported when used
+        """
+        laz_nosub = LazyImporter([ModuleImport("ex_mod")])
+
+        laz_sub = LazyImporter([ModuleImport("ex_mod.ex_submod")])
+
+        # Import ex_mod
+        assert laz_nosub.ex_mod.name == "ex_mod"
+
+        with pytest.raises(AttributeError):
+            laz_nosub.ex_mod.ex_submod
+
+        assert laz_sub.ex_mod.name == "ex_mod"
+        assert laz_sub.ex_mod.ex_submod.name == "ex_submod"
+
+    def test_submod_from(self):
+        """
+        Test a from import from a submodule
+        """
+        laz = LazyImporter(
+            [
+                FromImport("ex_mod.ex_submod", "name"),
+            ]
+        )
+
+        assert laz.name == "ex_submod"
+
+    def test_submod_multifrom(self):
+        """
+        Test a basic multi from import
+        """
+        laz = LazyImporter(
+            [
+                MultiFromImport("ex_mod.ex_submod", ["name", ("name2", "othername")]),
+            ]
+        )
+
+        assert laz.name == "ex_submod"
+        assert laz.othername == "ex_submod2"
+
+    def test_try_except_import(self):
+        """
+        Test a basic try/except import
+        """
+        # When the first import fails
+        laz = LazyImporter(
+            [
+                TryExceptImport("module_does_not_exist", "ex_mod", "ex_mod"),
+            ]
+        )
+
+        assert laz.ex_mod.name == "ex_mod"
+
+        # When the first import succeeds
+        laz2 = LazyImporter(
+            [
+                TryExceptImport("ex_mod", "ex_othermod", "ex_mod"),
+            ]
+        )
+
+        assert laz2.ex_mod.name == "ex_mod"
 
 
-def test_imports_submod():
-    laz_nosub = LazyImporter([
-        ModuleImport("ex_mod")
-    ])
+class TestImportsWithinExamples:
+    def test_relative_import(self):
+        import example_modules.lazy_submod_ex as lse
 
-    laz_sub = LazyImporter([
-        ModuleImport("ex_mod.ex_submod")
-    ])
+        laz = lse.lazy_submod_from_import()
+        assert laz.name == "ex_submod"
 
-    # Import ex_mod
-    assert laz_nosub.ex_mod.name == "ex_mod"
+        laz = lse.lazy_submod_multi_from_import()
+        assert laz.name == "ex_submod"
+        assert laz.othername == "ex_submod2"
 
-    with pytest.raises(AttributeError):
-        laz_nosub.ex_mod.ex_submod
+    def test_submod_relative_import(self):
+        from example_modules.ex_othermod import laz
 
-    assert laz_sub.ex_mod.name == "ex_mod"
-    assert laz_sub.ex_mod.ex_submod.name == "ex_submod"
-
-
-def test_submod_from():
-    laz = LazyImporter([
-        FromImport("ex_mod.ex_submod", "name"),
-    ])
-
-    assert laz.name == "ex_submod"
-
-
-def test_submod_multifrom():
-    laz = LazyImporter([
-        MultiFromImport("ex_mod.ex_submod", ["name", ("name2", "othername")]),
-    ])
-
-    assert laz.name == "ex_submod"
-    assert laz.othername == "ex_submod2"
-
-
-def test_try_except_import():
-    # When the first import fails
-    laz = LazyImporter([
-        TryExceptImport("module_does_not_exist", "ex_mod", "ex_mod"),
-    ])
-
-    assert laz.ex_mod.name == "ex_mod"
-
-    # When the first import succeeds
-    laz2 = LazyImporter([
-        TryExceptImport("ex_mod", "ex_othermod", "ex_mod"),
-    ])
-
-    assert laz2.ex_mod.name == "ex_mod"
-
-
-def test_relative_import():
-    import example_modules.lazy_submod_ex as lse
-
-    laz = lse.lazy_submod_from_import()
-    assert laz.name == "ex_submod"
-
-    laz = lse.lazy_submod_multi_from_import()
-    assert laz.name == "ex_submod"
-    assert laz.othername == "ex_submod2"
-
-
-def test_submod_relative_import():
-    from example_modules.ex_othermod import laz
-
-    assert laz.name == "ex_submod"
+        assert laz.name == "ex_submod"

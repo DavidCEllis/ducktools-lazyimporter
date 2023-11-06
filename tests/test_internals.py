@@ -1,21 +1,66 @@
+import itertools
+
 from ducktools.lazyimporter import (
     ModuleImport,
     FromImport,
+    MultiFromImport,
+    TryExceptImport,
     LazyImporter,
     _SubmoduleImports,
     MultiFromImport,
 )
 
 
-def test_equal_module():
-    mod1 = ModuleImport("collections")
-    mod2 = ModuleImport("collections")
+class TestImporterDunders:
+    def test_equal_module(self):
+        mod1 = ModuleImport("collections")
+        mod2 = ModuleImport("collections")
 
-    assert mod1 == mod2
+        assert mod1 == mod2
 
-    mod2 = ModuleImport("collections", "c")
+        mod2 = ModuleImport("collections", "c")
 
-    assert mod1 != mod2
+        assert mod1 != mod2
+
+    def test_equal_from(self):
+        from1 = FromImport("collections", "namedtuple")
+        from2 = FromImport("collections", "namedtuple")
+
+        assert from1 == from2
+
+        from2 = FromImport("collections", "defaultdict")
+
+        assert from1 != from2
+
+    def test_equal_multifrom(self):
+        mf1 = MultiFromImport("collections", ["namedtuple", "defaultdict"])
+        mf2 = MultiFromImport("collections", ["namedtuple", "defaultdict"])
+
+        assert mf1 == mf2
+
+        mf2 = MultiFromImport("collections", ["namedtuple"])
+
+        assert mf1 != mf2
+
+    def test_equal_tryexcept(self):
+        te1 = TryExceptImport("tomllib", "tomli", "tomllib")
+        te2 = TryExceptImport("tomllib", "tomli", "tomllib")
+
+        assert te1 == te2
+
+        te2 = TryExceptImport("dataclasses", "attrs", "dataclasses")
+        assert te1 != te2
+
+    def test_unequal_different_types(self):
+        mod1 = ModuleImport("collections")
+        from1 = FromImport("collections", "namedtuple")
+        mf1 = MultiFromImport("collections", ["namedtuple", "defaultdict"])
+        te1 = TryExceptImport("tomllib", "tomli", "tomllib")
+
+        combs = itertools.combinations([mod1, from1, mf1, te1], 2)
+
+        for i1, i2 in combs:
+            assert i1 != i2
 
 
 def test_no_duplication():

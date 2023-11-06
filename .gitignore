@@ -10,6 +10,8 @@ build/
 _build/
 dist/
 htmlcov/
+*.lcov
+coverage.xml
 
 .vscode/
 __pycache__/
