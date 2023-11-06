@@ -31,6 +31,13 @@ class TestDirectImports:
 
         assert example_1 is laz.example_1
 
+    def test_module_import_asname(self):
+        laz = LazyImporter([ModuleImport("example_1", asname="ex1")])
+
+        import example_1  # noqa  # pyright: ignore
+
+        assert example_1 is laz.ex1
+
     def test_from_import(self):
         """
         Test a basic from import from a module
@@ -67,6 +74,11 @@ class TestDirectImports:
 
         assert laz_sub.ex_mod.name == "ex_mod"
         assert laz_sub.ex_mod.ex_submod.name == "ex_submod"
+
+    def test_imports_submod_asname(self):
+        laz_sub = LazyImporter([ModuleImport("ex_mod.ex_submod", asname="ex_submod")])
+
+        assert laz_sub.ex_submod.name == "ex_submod"
 
     def test_submod_from(self):
         """
@@ -115,8 +127,22 @@ class TestDirectImports:
 
         assert laz2.ex_mod.name == "ex_mod"
 
+    def test_try_except_submod_import(self):
+        """
+        Test a try/except import with submodules
+        """
+        laz = LazyImporter(
+            [
+                TryExceptImport(
+                    "module_does_not_exist", "ex_mod.ex_submod", "ex_submod"
+                ),
+            ]
+        )
 
-class TestImportsWithinExamples:
+        assert laz.ex_submod.name == "ex_submod"
+
+
+class TestRelativeImports:
     def test_relative_import(self):
         import example_modules.lazy_submod_ex as lse
 
@@ -130,4 +156,4 @@ class TestImportsWithinExamples:
     def test_submod_relative_import(self):
         from example_modules.ex_othermod import laz
 
-        assert laz.name == "ex_submod"
+        assert laz.submod_name == "ex_submod"
