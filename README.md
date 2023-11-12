@@ -361,7 +361,6 @@ class IfElseImporter(ImportBase):
 And then use it with:
 
 ```python
-    
 laz = LazyImporter([
     IfElseImporter(
         condition=sys.version_info >= (3, 11),
