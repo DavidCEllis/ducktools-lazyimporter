@@ -26,19 +26,20 @@ when first accessed.
 import abc
 import sys
 
-__version__ = "v0.1.3"
+__version__ = "v0.1.4"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
     "FromImport",
     "MultiFromImport",
     "TryExceptImport",
+    "ImportBase",
     "get_importer_state",
     "get_module_funcs",
 ]
 
 
-class _ImportBase(abc.ABC):
+class ImportBase(abc.ABC):
     module_name: str
 
     @property
@@ -85,7 +86,7 @@ class _ImportBase(abc.ABC):
         """
 
 
-class ModuleImport(_ImportBase):
+class ModuleImport(ImportBase):
     module_name: str
     asname: "None | str"
 
@@ -142,7 +143,7 @@ class ModuleImport(_ImportBase):
             return {self.module_basename: mod}
 
 
-class FromImport(_ImportBase):
+class FromImport(ImportBase):
     module_name: str
     attrib_name: str
     asname: str
@@ -196,7 +197,7 @@ class FromImport(_ImportBase):
         return {self.asname: getattr(mod, self.attrib_name)}
 
 
-class MultiFromImport(_ImportBase):
+class MultiFromImport(ImportBase):
     module_name: str
     attrib_names: "list[str | tuple[str, str]]"
 
@@ -271,7 +272,7 @@ class MultiFromImport(_ImportBase):
         return from_imports
 
 
-class TryExceptImport(_ImportBase):
+class TryExceptImport(ImportBase):
     module_name: str
     except_module: str
     asname: str
@@ -385,7 +386,7 @@ class TryExceptImport(_ImportBase):
         return {self.asname: mod}
 
 
-class _SubmoduleImports(_ImportBase):
+class _SubmoduleImports(ImportBase):
     module_name: str
     submodules: "set[str]"
 
@@ -468,7 +469,7 @@ class _ImporterGrouper:
         :type inst: LazyImporter
         :return: lazy importers attribute dict mapping to the objects that
                  perform the imports
-        :rtype: dict[str, _ImportBase]
+        :rtype: dict[str, ImportBase]
         """
         importers = {}
 
@@ -522,7 +523,7 @@ class _ImporterGrouper:
 
 
 class LazyImporter:
-    _imports: "list[ModuleImport | FromImport | MultiFromImport | TryExceptImport]"
+    _imports: "list[ImportBase]"
     _globals: dict
 
     _importers = _ImporterGrouper()
@@ -535,7 +536,7 @@ class LazyImporter:
         globals() must be provided to the importer if relative imports are used.
 
         :param imports: list of imports
-        :type imports: list[ModuleImport | FromImport | MultiFromImport | TryExceptImport]
+        :type imports: list[ImportBase]
         :param globs: globals object for relative imports
         :type globs: dict[str, typing.Any]
         :param eager_process: filter and check the imports eagerly

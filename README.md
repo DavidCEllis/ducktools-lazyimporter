@@ -309,3 +309,50 @@ Functools elements imported:
                          'pprint': <function pprint at ...},
  'lazy_attributes': ['inspect']}
 ```
+
+## Extending ##
+
+Perhaps these cases don't cover the import type you're looking for and you
+need an extension. These can be made by subclassing `ImportBase`.
+
+For example say you want an importer that can do this kind of import:
+
+```python
+import sys
+if sys.version_info >= (3, 12):
+    import tomllib
+else:
+    import tomli as tomllib
+```
+
+You could write something like this:
+
+```python
+# NOTE: This is a simplified example using importlib.import_module
+import importlib
+from ducktools.lazyimporter import ImportBase
+
+
+class IfElseImporter(ImportBase):
+    def __init__(self, condition, module_name, else_module_name, asname):
+        self.condition = condition
+        self.module_name = module_name
+        self.else_module_name = else_module_name
+        self.asname = asname
+        
+        if not self.asname.isidentifier():
+            raise ValueError(f"{self.asname} is not a valid python identifier.")
+        
+    def do_import(self, globs=None):
+        if globs is not None:
+            package = globs.get('__name__')
+        else:
+            package = None
+            
+        if self.condition:
+            mod = importlib.import_module(self.module_name, package)
+        else:
+            mod = importlib.import_module(self.else_module_name, package)
+            
+        return {self.asname: mod}
+```
