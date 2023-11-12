@@ -330,7 +330,7 @@ You could write something like this:
 ```python
 # NOTE: This is a simplified example using importlib.import_module
 import importlib
-from ducktools.lazyimporter import ImportBase
+from ducktools.lazyimporter import ImportBase, LazyImporter
 
 
 class IfElseImporter(ImportBase):
@@ -355,4 +355,19 @@ class IfElseImporter(ImportBase):
             mod = importlib.import_module(self.else_module_name, package)
             
         return {self.asname: mod}
+
+```
+
+And then use it with:
+
+```python
+    
+laz = LazyImporter([
+    IfElseImporter(
+        condition=sys.version_info >= (3, 11),
+        module_name="tomllib",
+        else_module_name="tomli",
+        asname="tomllib",
+    )
+])
 ```
