@@ -6,6 +6,9 @@ from typing import (
 )
 import types
 
+__version__: str
+__all__: list[str]
+
 class ImportBase(abc.ABC, metaclass=abc.ABCMeta):
     module_name: str
 
