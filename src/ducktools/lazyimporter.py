@@ -26,13 +26,14 @@ when first accessed.
 import abc
 import sys
 
-__version__ = "v0.2.0"
+__version__ = "v0.2.1"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
     "FromImport",
     "MultiFromImport",
     "TryExceptImport",
+    "TryExceptFromImport",
     "ImportBase",
     "get_importer_state",
     "get_module_funcs",
@@ -384,6 +385,93 @@ class TryExceptImport(ImportBase):
             mod = getattr(mod, submod)
 
         return {self.asname: mod}
+
+
+class TryExceptFromImport(TryExceptImport):
+    module_name: str
+    attribute_name: str
+    except_module: str
+    except_attribute: str
+    asname: str
+
+    def __init__(self, module_name, attribute_name, except_module, except_attribute, asname):
+        """
+        Equivalent to:
+        ```
+        try:
+            from <module_name> import <attribute_name> as <asname>
+        except ImportError:
+            from <except_module> import <except_attribute> as <asname>
+        ```
+
+        :param module_name: Name of module to 'try' to import from
+        :type module_name: str
+        :param attribute_name: Name of attribute to import from module_name
+        :type attribute_name: str
+        :param except_module: Name of module to import from if initial import fails
+        :type except_module: str
+        :param except_attribute: Name of attribute from the except_module
+        :type except_attribute: str
+        :param asname: Name to use to access this attribute on the LazyImporter
+        :type asname: str
+        """
+        super().__init__(module_name, except_module, asname)
+        self.attribute_name = attribute_name
+        self.except_attribute = except_attribute
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}("
+            f"module_name={self.module_name!r}, "
+            f"attribute_name={self.attribute_name!r}, "
+            f"except_module={self.except_module!r}, "
+            f"except_attribute={self.except_attribute!r}, "
+            f"asname={self.asname!r}"
+            f")"
+        )
+
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return (self.module_name, self.attribute_name, self.except_module, self.except_attribute, self.asname) == (
+                other.module_name,
+                other.attribute_name,
+                other.except_module,
+                other.except_attribute,
+                other.asname,
+            )
+        return NotImplemented
+
+    def do_import(self, globs=None):
+        try:
+            mod = __import__(
+                self.module_name_noprefix,
+                globals=globs,
+                level=self.import_level,
+            )
+        except ImportError:
+            mod = __import__(
+                self.except_module_noprefix,
+                globals=globs,
+                level=self.except_import_level,
+            )
+            submod_used = [self.except_module_basename]
+            submodule_names = self.except_module_names
+            used_fallback = True
+        else:
+            submod_used = [self.module_basename]
+            submodule_names = self.submodule_names
+            used_fallback = False
+
+        for submod in submodule_names:
+            submod_used.append(submod)
+            mod = getattr(mod, submod)
+
+        if used_fallback:
+            attrib = getattr(mod, self.except_attribute)
+        else:
+            attrib = getattr(mod, self.attribute_name)
+
+        return {self.asname: attrib}
 
 
 class _SubmoduleImports(ImportBase):

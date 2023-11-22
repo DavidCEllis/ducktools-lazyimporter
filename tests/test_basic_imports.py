@@ -8,6 +8,7 @@ from ducktools.lazyimporter import (
     FromImport,
     MultiFromImport,
     TryExceptImport,
+    TryExceptFromImport,
 )
 
 
@@ -141,6 +142,18 @@ class TestDirectImports:
 
         assert laz.ex_submod.name == "ex_submod"
 
+    def test_try_except_from_import(self):
+        laz = LazyImporter([
+            TryExceptFromImport("ex_mod", "name", "ex_othermod", "name", "name")
+        ])
+
+        assert laz.name == "ex_mod"
+
+        laz = LazyImporter([
+            TryExceptFromImport("module_does_not_exist", "name", "ex_mod.ex_submod", "name", "name")
+        ])
+
+        assert laz.name == "ex_submod"
 
 class TestRelativeImports:
     def test_relative_import(self):
