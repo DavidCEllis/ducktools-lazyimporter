@@ -75,6 +75,18 @@ class TryExceptImport(ImportBase):
     def except_module_names(self) -> list[str]: ...
     def do_import(self, globs: dict[str, Any] | None = ...): ...
 
+class TryExceptFromImport(TryExceptImport):
+    def __init__(
+        self,
+        module_name: str,
+        attribute_name: str,
+        except_module: str,
+        except_attribute: str,
+        asname: str,
+    ) -> None: ...
+    def __eq__(self, other): ...
+    def do_import(self, globs: dict[str, Any] | None = ...): ...
+
 class _SubmoduleImports(ImportBase):
     module_name: str
     submodules: set[str]
