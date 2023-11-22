@@ -18,6 +18,17 @@ def test_missing_import():
         _ = laz.missing_attribute
 
 
+def test_missing_attribute():
+    import ex_othermod
+
+    assert ex_othermod.name == "ex_othermod"
+
+    with pytest.raises(AttributeError) as e:
+        _ = ex_othermod.invalid
+
+    assert e.match("module 'ex_othermod' has no attribute 'invalid'")
+
+
 def test_invalid_input():
     with pytest.raises(TypeError) as e:
         laz = LazyImporter(["importlib"], eager_process=True)

@@ -722,7 +722,10 @@ def get_module_funcs(importer, module_name=None):
         dir_data = sorted(list(mod.__dict__.keys()) + dir(importer))
 
         def __getattr__(name):
-            attr = getattr(importer, name)
+            try:
+                attr = getattr(importer, name)
+            except AttributeError:
+                raise AttributeError(f"module {module_name!r} has no attribute {name!r}")
             setattr(mod, name, attr)
             return attr
 
