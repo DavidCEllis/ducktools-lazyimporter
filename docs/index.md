@@ -41,7 +41,7 @@ def dumps(obj, **kwargs):
         new_default = _dataclass_default
     kwargs["default"] = new_default
     
-    return laz.json.dumps(obj, **kwargs)
+    return laz.dumps(obj, **kwargs)
 ```
 
 
