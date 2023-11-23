@@ -29,6 +29,7 @@ license = {file = "LICENSE.md"}
 
 [project.optional-dependencies]
 testing = ["pytest", "pytest-cov"]
+docs = ["sphinx", "myst-parser", "sphinx_rtd_theme"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

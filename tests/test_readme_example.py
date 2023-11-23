@@ -2,7 +2,7 @@
 
 # NOTE: This is a simplified example using importlib.import_module
 import importlib
-from ducktools.lazyimporter import ImportBase, LazyImporter
+from ducktools.lazyimporter import ImportBase, LazyImporter, FromImport
 
 
 class IfElseImporter(ImportBase):
@@ -51,3 +51,49 @@ def test_ifelse_importer():
 
     assert laz_if.ex_mod.name == "ex_mod"
     assert laz_else.ex_mod.name == "ex_othermod"
+
+
+def test_doc_example():
+    from dataclasses import dataclass
+
+    laz = LazyImporter([
+        FromImport("dataclasses", "fields"),
+        FromImport("json", "dumps"),
+    ])
+
+    def _dataclass_default(dc):
+        # In general is_dataclass should be used, but for this case
+        # in order to demonstrate laziness it is not.
+        if hasattr(dc, "__dataclass_fields__"):
+            fields = laz.fields(dc)
+            return {f.name: getattr(dc, f.name) for f in fields}
+        raise TypeError("Object is not a Dataclass")
+
+    def dumps(obj, **kwargs):
+        default = kwargs.pop("default", None)
+        if default:
+            def new_default(o):
+                try:
+                    return default(o)
+                except TypeError:
+                    return _dataclass_default(o)
+        else:
+            new_default = _dataclass_default
+        kwargs["default"] = new_default
+
+        return laz.dumps(obj, **kwargs)
+
+    @dataclass
+    class TestEx:
+        answer: int
+        question: str
+
+    in_dict = {
+        "answer": 42,
+        "question": "What do you get if you multiply 6 by 9?",
+    }
+
+    ex = TestEx(**in_dict)
+    output = laz.dumps(in_dict)
+
+    assert dumps(ex) == output
