@@ -204,7 +204,7 @@ class MultiFromImport(ImportBase):
 
     def __init__(self, module_name, attrib_names):
         """
-        Equivalent to `from <module_name> import <attrib_names[0]>, <attrib_names[1]>, ...
+        Equivalent to `from <module_name> import <attrib_names[0]>, <attrib_names[1]>, ...`
         when provided to a LazyImporter
 
         Optional 'asname' for attributes if given as a tuple.
@@ -282,10 +282,12 @@ class TryExceptImport(ImportBase):
         """
         Equivalent to:
 
-        try:
-            import <module_name> as <asname>
-        except ImportError:
-            import <except_module> as <asname>
+        .. code-block:: python
+
+            try:
+                import <module_name> as <asname>
+            except ImportError:
+                import <except_module> as <asname>
 
         Inside a LazyImporter
 
@@ -397,12 +399,13 @@ class TryExceptFromImport(TryExceptImport):
     def __init__(self, module_name, attribute_name, except_module, except_attribute, asname):
         """
         Equivalent to:
-        ```
-        try:
-            from <module_name> import <attribute_name> as <asname>
-        except ImportError:
-            from <except_module> import <except_attribute> as <asname>
-        ```
+
+        .. code-block:: python
+
+            try:
+                from <module_name> import <attribute_name> as <asname>
+            except ImportError:
+                from <except_module> import <except_attribute> as <asname>
 
         :param module_name: Name of module to 'try' to import from
         :type module_name: str

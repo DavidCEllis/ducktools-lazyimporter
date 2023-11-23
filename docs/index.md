@@ -6,42 +6,40 @@ maxdepth: 2
 caption: "Contents:"
 hidden: true
 ---
+examples
+api
 ```
 
 Ducktools: Lazy Importer is a module intended to make it easier to defer
 imports until needed without requiring the import statement to be written
 in-line.
 
-Example (a json dump function for dataclasses):
+There are two main use cases it is designed for:
+
+Importing an external module to use in a specific part of a function
 
 ```python
 from ducktools.lazyimporter import LazyImporter, FromImport
-laz = LazyImporter([
-    FromImport("dataclasses", "fields"),
-    FromImport("json", "dumps"),
-])
 
-def _dataclass_default(dc):
-    # In general is_dataclass should be used, but for this case
-    # in order to demonstrate laziness it is not.
-    if hasattr(dc, "__dataclass_fields__"):
-        fields = laz.fields(dc)
-        return {f.name: getattr(dc, f.name) for f in fields}
-    raise TypeError("Object is not a Dataclass")
+laz = LazyImporter([FromImport("inspect", "getsource")])
 
-def dumps(obj, **kwargs):
-    default = kwargs.pop("default", None)
-    if default:
-        def new_default(o):
-            try:
-                return default(o)
-            except TypeError:
-                return _dataclass_default(o)
-    else:
-        new_default = _dataclass_default
-    kwargs["default"] = new_default
-    
-    return laz.dumps(obj, **kwargs)
+def work_with_source(obj):
+    src = laz.getsource(obj)
+    ...
+```
+
+Providing access to submodule attributes in the main module without importing
+unless they are requested.
+
+```python
+from ducktools.lazyimporter import LazyImporter, FromImport, get_module_funcs
+
+laz = LazyImporter(
+    [FromImport(".funcs", "to_json")],
+    globs=globals()  # Need to provide globals for relative imports
+)
+
+__getattr__, __dir__ = get_module_funcs(laz, __name__)
 ```
 
 

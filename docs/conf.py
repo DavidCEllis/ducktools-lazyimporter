@@ -19,6 +19,7 @@ release = lazyimporter.__version__
 extensions = ["myst_parser", "sphinx.ext.autodoc", "sphinx_rtd_theme"]
 
 autodoc_typehints = "description"
+autoclass_content = "init"
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
