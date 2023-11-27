@@ -76,6 +76,11 @@ class TryExceptImport(ImportBase):
     def do_import(self, globs: dict[str, Any] | None = ...): ...
 
 class TryExceptFromImport(TryExceptImport):
+    module_name: str
+    attribute_name: str
+    except_module: str
+    except_attribute: str
+    asname: str
     def __init__(
         self,
         module_name: str,
