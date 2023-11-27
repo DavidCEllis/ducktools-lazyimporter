@@ -14,7 +14,12 @@ Ducktools: Lazy Importer is a module intended to make it easier to defer
 imports until needed without requiring the import statement to be written
 in-line.
 
-There are two main use cases it is designed for:
+The goal of deferring imports is to avoid importing modules that is not guaranteed
+to be used in the course of running an application.
+This can be done both on the side of the application, in deferring imports
+only used in specific code paths and from the side of a library, providing
+a nice API with easy access to modules without needing to import the module
+in the case it is not used.
 
 Importing an external module to use in a specific part of a function
 
@@ -24,7 +29,7 @@ from ducktools.lazyimporter import LazyImporter, FromImport
 laz = LazyImporter([FromImport("inspect", "getsource")])
 
 def work_with_source(obj):
-    src = laz.getsource(obj)
+    src = laz.getsource(obj)  # import occurs only when this line first runs
     ...
 ```
 
