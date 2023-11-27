@@ -71,7 +71,9 @@ class TestImporterDunders:
 
         assert te1 == te2
 
-        te2 = TryExceptFromImport("attrs", "define", "dataclasses", "dataclass", "define")
+        te2 = TryExceptFromImport(
+            "attrs", "define", "dataclasses", "dataclass", "define"
+        )
         assert te1 != te2
 
     def test_unequal_different_types(self):

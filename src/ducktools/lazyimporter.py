@@ -396,7 +396,9 @@ class TryExceptFromImport(TryExceptImport):
     except_attribute: str
     asname: str
 
-    def __init__(self, module_name, attribute_name, except_module, except_attribute, asname):
+    def __init__(
+        self, module_name, attribute_name, except_module, except_attribute, asname
+    ):
         """
         Equivalent to:
 
@@ -435,7 +437,13 @@ class TryExceptFromImport(TryExceptImport):
 
     def __eq__(self, other):
         if self.__class__ is other.__class__:
-            return (self.module_name, self.attribute_name, self.except_module, self.except_attribute, self.asname) == (
+            return (
+                self.module_name,
+                self.attribute_name,
+                self.except_module,
+                self.except_attribute,
+                self.asname,
+            ) == (
                 other.module_name,
                 other.attribute_name,
                 other.except_module,
@@ -728,7 +736,9 @@ def get_module_funcs(importer, module_name=None):
             try:
                 attr = getattr(importer, name)
             except AttributeError:
-                raise AttributeError(f"module {module_name!r} has no attribute {name!r}")
+                raise AttributeError(
+                    f"module {module_name!r} has no attribute {name!r}"
+                )
             setattr(mod, name, attr)
             return attr
 

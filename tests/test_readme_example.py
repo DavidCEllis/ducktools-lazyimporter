@@ -31,23 +31,27 @@ class IfElseImporter(ImportBase):
 
 # Test for readme example code
 def test_ifelse_importer():
-    laz_if = LazyImporter([
-        IfElseImporter(
-            condition=True,
-            module_name="ex_mod",
-            else_module_name="ex_othermod",
-            asname="ex_mod"
-        )
-    ])
+    laz_if = LazyImporter(
+        [
+            IfElseImporter(
+                condition=True,
+                module_name="ex_mod",
+                else_module_name="ex_othermod",
+                asname="ex_mod",
+            )
+        ]
+    )
 
-    laz_else = LazyImporter([
-        IfElseImporter(
-            condition=False,
-            module_name="ex_mod",
-            else_module_name="ex_othermod",
-            asname="ex_mod"
-        )
-    ])
+    laz_else = LazyImporter(
+        [
+            IfElseImporter(
+                condition=False,
+                module_name="ex_mod",
+                else_module_name="ex_othermod",
+                asname="ex_mod",
+            )
+        ]
+    )
 
     assert laz_if.ex_mod.name == "ex_mod"
     assert laz_else.ex_mod.name == "ex_othermod"
@@ -56,10 +60,12 @@ def test_ifelse_importer():
 def test_doc_example():
     from dataclasses import dataclass
 
-    laz = LazyImporter([
-        FromImport("dataclasses", "fields"),
-        FromImport("json", "dumps"),
-    ])
+    laz = LazyImporter(
+        [
+            FromImport("dataclasses", "fields"),
+            FromImport("json", "dumps"),
+        ]
+    )
 
     def _dataclass_default(dc):
         # In general is_dataclass should be used, but for this case
@@ -72,11 +78,13 @@ def test_doc_example():
     def dumps(obj, **kwargs):
         default = kwargs.pop("default", None)
         if default:
+
             def new_default(o):
                 try:
                     return default(o)
                 except TypeError:
                     return _dataclass_default(o)
+
         else:
             new_default = _dataclass_default
         kwargs["default"] = new_default
