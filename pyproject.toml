@@ -39,3 +39,9 @@ version = {attr = "ducktools.lazyimporter.__version__"}
 
 [tool.black]
 skip-string-normalization = true
+
+[tool.pytest.ini_options]
+addopts= "--cov=src/ --cov-report=term-missing"
+testpaths = [
+    "tests",
+]
