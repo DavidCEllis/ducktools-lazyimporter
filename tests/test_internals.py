@@ -5,6 +5,7 @@ from ducktools.lazyimporter import (
     FromImport,
     MultiFromImport,
     TryExceptImport,
+    TryExceptFromImport,
     _SubmoduleImports,
     _ImporterGrouper,
     LazyImporter,
@@ -64,14 +65,24 @@ class TestImporterDunders:
         te2 = TryExceptImport("dataclasses", "attrs", "dataclasses")
         assert te1 != te2
 
+    def test_equal_tryexceptfrom(self):
+        te1 = TryExceptFromImport("tomllib", "loads", "tomli", "loads", "loads")
+        te2 = TryExceptFromImport("tomllib", "loads", "tomli", "loads", "loads")
+
+        assert te1 == te2
+
+        te2 = TryExceptFromImport("attrs", "define", "dataclasses", "dataclass", "define")
+        assert te1 != te2
+
     def test_unequal_different_types(self):
         mod1 = ModuleImport("collections")
         from1 = FromImport("collections", "namedtuple")
         mf1 = MultiFromImport("collections", ["namedtuple", "defaultdict"])
         te1 = TryExceptImport("tomllib", "tomli", "tomllib")
+        tef1 = TryExceptFromImport("tomllib", "loads", "tomli", "loads", "loads")
         subm1 = _SubmoduleImports("importlib", {"importlib.util"})
 
-        combs = itertools.combinations([mod1, from1, mf1, te1, subm1], 2)
+        combs = itertools.combinations([mod1, from1, mf1, te1, subm1, tef1], 2)
 
         for i1, i2 in combs:
             assert i1 != i2
@@ -116,6 +127,20 @@ class TestImporterDunders:
         )
 
         assert repr(te1) == te1str
+
+    def test_import_repr_tryexceptfrom(self):
+        tef1 = TryExceptFromImport("tomllib", "loads", "tomli", "loads", "loads")
+
+        tef1str = (
+            "TryExceptFromImport("
+            "module_name='tomllib', "
+            "attribute_name='loads', "
+            "except_module='tomli', "
+            "except_attribute='loads', "
+            "asname='loads')"
+        )
+
+        assert repr(tef1) == tef1str
 
     def test_import_repr_submod(self):
         subm1 = _SubmoduleImports(
