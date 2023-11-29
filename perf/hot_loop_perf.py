@@ -1,6 +1,6 @@
 from ex_funcs.ex_loop import do_nothing
 from timeit import timeit
-from lazy_importer import LazyImporter, FromImport
+from ducktools.lazyimporter import LazyImporter, FromImport
 
 laz = LazyImporter([
     FromImport("ex_funcs.ex_loop", "do_nothing")
