@@ -3,11 +3,22 @@ from typing import (
     Any,
     TypedDict,
     overload,
+    type_check_only,
 )
 import types
 
 __version__: str
-__all__: list[str]
+__all__: list[str] = [
+    "LazyImporter",
+    "ModuleImport",
+    "FromImport",
+    "MultiFromImport",
+    "TryExceptImport",
+    "TryExceptFromImport",
+    "ImportBase",
+    "get_importer_state",
+    "get_module_funcs",
+]
 
 class ImportBase(abc.ABC, metaclass=abc.ABCMeta):
     module_name: str
@@ -125,6 +136,7 @@ class LazyImporter:
     def __getattr__(self, name: str) -> types.ModuleType | Any: ...
     def __dir__(self): ...
 
+@type_check_only
 class _ImporterState(TypedDict):
     imported_attributes: dict[str, Any]
     lazy_attributes: list[str]
