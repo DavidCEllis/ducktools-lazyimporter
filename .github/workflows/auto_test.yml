@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  test-prefab:
+  test-module:
 
     runs-on: ${{ matrix.os }}
     strategy:
