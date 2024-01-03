@@ -1,5 +1,5 @@
 # MIT License
-# Copyright (c) 2023 David C Ellis
+# Copyright (c) 2023-2024 David C Ellis
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@ when first accessed.
 import abc
 import sys
 
-__version__ = "v0.2.3"
+__version__ = "v0.3.0"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
@@ -40,7 +40,7 @@ __all__ = [
 ]
 
 
-class ImportBase(abc.ABC):
+class ImportBase(metaclass=abc.ABCMeta):
     module_name: str
 
     @property
@@ -89,7 +89,7 @@ class ImportBase(abc.ABC):
 
 class ModuleImport(ImportBase):
     module_name: str
-    asname: "None | str"
+    asname: str
 
     def __init__(self, module_name, asname=None):
         """
@@ -102,14 +102,21 @@ class ModuleImport(ImportBase):
         :type asname: str
         """
         self.module_name = module_name
-        self.asname = asname
 
-        if self.import_level > 0 and asname is None:
-            raise ValueError(
-                "Relative imports are not allowed without an assigned name."
-            )
+        if asname is None:
+            if self.import_level > 0:
+                raise ValueError(
+                    f"Relative import {self.module_name!r} requires an assigned name."
+                )
+            elif self.submodule_names:
+                raise ValueError(
+                    f"Submodule import {self.module_name!r} requires an assigned name."
+                )
+            self.asname = module_name
+        else:
+            self.asname = asname
 
-        if self.asname is not None and not asname.isidentifier():
+        if not self.asname.isidentifier():
             raise ValueError(f"{self.asname!r} is not a valid Python identifier.")
 
     def __repr__(self):
@@ -132,16 +139,10 @@ class ModuleImport(ImportBase):
             level=self.import_level,
         )
 
-        if self.asname:  # return the submodule
-            submod_used = [self.module_basename]
-            for submod in self.submodule_names:
-                submod_used.append(submod)
-                mod = getattr(mod, submod)
+        for submod in self.submodule_names:
+            mod = getattr(mod, submod)
 
-        if self.asname:
-            return {self.asname: mod}
-        else:  # pragma: no cover
-            return {self.module_basename: mod}
+        return {self.asname: mod}
 
 
 class FromImport(ImportBase):
@@ -273,7 +274,49 @@ class MultiFromImport(ImportBase):
         return from_imports
 
 
-class TryExceptImport(ImportBase):
+class _TryExceptImportMixin(metaclass=abc.ABCMeta):
+    except_module: str
+
+    @property
+    def except_import_level(self):
+        level = 0
+        for char in self.except_module:
+            if char != ".":
+                break
+            level += 1
+        return level
+
+    @property
+    def except_module_noprefix(self):
+        """
+        Remove any leading '.' characters from the except_module name.
+        :return:
+        """
+        return self.except_module.lstrip(".")
+
+    @property
+    def except_module_basename(self):
+        """
+        Get the first part of an except module import name.
+        eg: 'importlib' from 'importlib.util'
+
+        :return: name of base module
+        :rtype: str
+        """
+        return self.except_module_noprefix.split(".")[0]
+
+    @property
+    def except_module_names(self):
+        """
+        Get a list of all except submodule names in order.
+        eg: ['util'] from 'importlib.util'
+        :return: List of submodule names.
+        :rtype: list[str]
+        """
+        return self.except_module_noprefix.split(".")[1:]
+
+
+class TryExceptImport(_TryExceptImportMixin, ImportBase):
     module_name: str
     except_module: str
     asname: str
@@ -324,44 +367,6 @@ class TryExceptImport(ImportBase):
             )
         return NotImplemented
 
-    @property
-    def except_import_level(self):
-        level = 0
-        for char in self.except_module:
-            if char != ".":
-                break
-            level += 1
-        return level
-
-    @property
-    def except_module_noprefix(self):
-        """
-        Remove any leading '.' characters from the except_module name.
-        :return:
-        """
-        return self.except_module.lstrip(".")
-
-    @property
-    def except_module_basename(self):
-        """
-        Get the first part of an except module import name.
-        eg: 'importlib' from 'importlib.util'
-
-        :return: name of base module
-        :rtype: str
-        """
-        return self.except_module_noprefix.split(".")[0]
-
-    @property
-    def except_module_names(self):
-        """
-        Get a list of all except submodule names in order.
-        eg: ['util'] from 'importlib.util'
-        :return: List of submodule names.
-        :rtype: list[str]
-        """
-        return self.except_module_noprefix.split(".")[1:]
-
     def do_import(self, globs=None):
         try:
             mod = __import__(
@@ -389,7 +394,7 @@ class TryExceptImport(ImportBase):
         return {self.asname: mod}
 
 
-class TryExceptFromImport(TryExceptImport):
+class TryExceptFromImport(_TryExceptImportMixin, ImportBase):
     module_name: str
     attribute_name: str
     except_module: str
@@ -420,9 +425,14 @@ class TryExceptFromImport(TryExceptImport):
         :param asname: Name to use to access this attribute on the LazyImporter
         :type asname: str
         """
-        super().__init__(module_name, except_module, asname)
+        self.module_name = module_name
+        self.except_module = except_module
+        self.asname = asname
         self.attribute_name = attribute_name
         self.except_attribute = except_attribute
+
+        if not self.asname.isidentifier():
+            raise ValueError(f"{self.asname!r} is not a valid Python identifier.")
 
     def __repr__(self):
         return (
@@ -485,56 +495,6 @@ class TryExceptFromImport(TryExceptImport):
         return {self.asname: attrib}
 
 
-class _SubmoduleImports(ImportBase):
-    module_name: str
-    submodules: "set[str]"
-
-    def __init__(self, module_name, submodules=None):
-        """
-        Private class to handle correctly importing submodules originally provided
-        as ModuleImport classes without 'asname' provided
-
-        :param module_name: name of the module
-        :type module_name: str
-        :param submodules: tuple of all submodules to import
-        :type submodules: None | set[str]
-        """
-        self.module_name = module_name
-        self.submodules = submodules if submodules is not None else set()
-
-    def __repr__(self):
-        return (
-            f"{self.__class__.__name__}("
-            f"module_name={self.module_name!r}, "
-            f"submodules={self.submodules!r}"
-            f")"
-        )
-
-    def __eq__(self, other):
-        if self.__class__ is other.__class__:
-            return (self.module_name, self.submodules) == (
-                other.module_name,
-                other.submodules,
-            )
-        return NotImplemented
-
-    def do_import(self, globs=None):
-        for submod in self.submodules:  # Make sure any submodules are in place
-            __import__(
-                submod,
-                globals=globs,
-                level=self.import_level,
-            )
-
-        mod = __import__(
-            self.module_basename,
-            globals=globs,
-            level=self.import_level,
-        )
-
-        return {self.module_name: mod}
-
-
 class _ImporterGrouper:
     def __init__(self):
         self._name = None
@@ -578,7 +538,7 @@ class _ImporterGrouper:
                     "Attempted to setup relative import without providing globals()."
                 )
 
-            # import x.y as z OR from x import y
+            # import x, import x.y as z OR from x import y
             if asname := getattr(imp, "asname", None):
                 if asname in importers:
                     raise ValueError(f"{asname!r} used for multiple imports.")
@@ -591,28 +551,6 @@ class _ImporterGrouper:
                         raise ValueError(f"{asname!r} used for multiple imports.")
                     importers[asname] = imp
 
-            # import x OR import x.y
-            elif isinstance(imp, ModuleImport):
-                # Collecting all submodule imports under the main module import
-                try:
-                    importer = importers[imp.module_basename]
-                except KeyError:
-                    if imp.module_name == imp.module_basename:
-                        importer = _SubmoduleImports(imp.module_basename)
-                    else:
-                        importer = _SubmoduleImports(
-                            imp.module_basename, {imp.module_name_noprefix}
-                        )
-                    importers[imp.module_basename] = importer
-                else:
-                    if isinstance(importer, _SubmoduleImports):
-                        # Don't add the basename
-                        if imp.module_name_noprefix != imp.module_basename:
-                            importer.submodules.add(imp.module_name_noprefix)
-                    else:
-                        raise ValueError(
-                            f"{imp.module_name!r} used for multiple imports."
-                        )
             else:
                 raise TypeError(
                     f"{imp!r} is not an instance of "

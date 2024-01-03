@@ -140,8 +140,7 @@ from ducktools.lazyimporter import ModuleImport
 modules = [
     ModuleImport("module"),
     ModuleImport("other_module", "other_name"),
-    ModuleImport("base_module.submodule"),
-    ModuleImport("base_module.submodule", "short_name"),
+    ModuleImport("base_module.submodule", asname="short_name"),
 ]
 ```
 
@@ -150,7 +149,6 @@ is equivalent to
 ```
 import module
 import other_module as other_name
-import base_module.submodule
 import base_module.submodule as short_name
 ```
 
@@ -321,7 +319,6 @@ Subclasses of `ImportBase` require 3 things:
 
 `asname` or `asnames` must be either the identifier or a list of identifiers 
 (respectively) to use to store attributes. This can be an attribute or a property.
-(ModuleImport internally is special cased to not require an asname).
 
 `do_import` must be a method that takes 2 arguments `(self, globs=None)`, performs
 the import and returns a dictionary of the form `{asname: <object>, ...}` for all of
@@ -373,6 +370,8 @@ class IfElseImporter(ImportBase):
 And then use it with:
 
 ```python
+import sys
+
 laz = LazyImporter([
     IfElseImporter(
         condition=sys.version_info >= (3, 11),

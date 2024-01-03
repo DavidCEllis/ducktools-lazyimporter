@@ -6,7 +6,6 @@ from ducktools.lazyimporter import (
     MultiFromImport,
     TryExceptImport,
     TryExceptFromImport,
-    _SubmoduleImports,
     _ImporterGrouper,
     LazyImporter,
 )
@@ -25,16 +24,6 @@ class TestImporterDunders:
 
         mod3 = ModuleImport("collections", "c")
         assert mod3 == mod2
-
-    def test_equal_submod_import(self):
-        mod1 = _SubmoduleImports("importlib", {"importlib.util"})
-        mod2 = _SubmoduleImports("importlib", {"importlib.util"})
-
-        assert mod1 == mod2
-
-        mod3 = _SubmoduleImports("importlib", set())
-
-        assert mod1 != mod3
 
     def test_equal_from(self):
         from1 = FromImport("collections", "namedtuple")
@@ -82,16 +71,15 @@ class TestImporterDunders:
         mf1 = MultiFromImport("collections", ["namedtuple", "defaultdict"])
         te1 = TryExceptImport("tomllib", "tomli", "tomllib")
         tef1 = TryExceptFromImport("tomllib", "loads", "tomli", "loads", "loads")
-        subm1 = _SubmoduleImports("importlib", {"importlib.util"})
 
-        combs = itertools.combinations([mod1, from1, mf1, te1, subm1, tef1], 2)
+        combs = itertools.combinations([mod1, from1, mf1, te1, tef1], 2)
 
         for i1, i2 in combs:
             assert i1 != i2
 
     def test_import_repr_module(self):
-        mod1 = ModuleImport(module_name='collections', asname=None)
-        mod1str = "ModuleImport(module_name='collections', asname=None)"
+        mod1 = ModuleImport(module_name='collections')
+        mod1str = "ModuleImport(module_name='collections', asname='collections')"
 
         assert repr(mod1) == mod1str
 
@@ -144,18 +132,6 @@ class TestImporterDunders:
 
         assert repr(tef1) == tef1str
 
-    def test_import_repr_submod(self):
-        subm1 = _SubmoduleImports(
-            module_name='importlib',
-            submodules={'importlib.util'},
-        )
-        subm1str = (
-            "_SubmoduleImports("
-            "module_name='importlib', "
-            "submodules={'importlib.util'})"
-        )
-        assert repr(subm1) == subm1str
-
     def test_importer_repr(self):
         globs = globals()
         imports = [ModuleImport("functools"), FromImport("collections", "namedtuple")]
@@ -167,26 +143,6 @@ class TestImporterDunders:
 
 
 class TestGatherImports:
-    def test_no_duplication(self):
-        importer = LazyImporter(
-            [ModuleImport("collections"), ModuleImport("collections")]
-        )
-
-        assert dir(importer) == ["collections"]
-        assert importer._importers == {"collections": _SubmoduleImports("collections")}
-
-    def test_submodule_gather(self):
-        importer = LazyImporter(
-            [
-                ModuleImport("collections.abc"),
-            ]
-        )
-
-        assert dir(importer) == ["collections"]
-
-        assert importer._importers == {
-            "collections": _SubmoduleImports("collections", {"collections.abc"})
-        }
 
     def test_asname_gather(self):
         importer = LazyImporter(
@@ -217,7 +173,6 @@ class TestGatherImports:
         importer = LazyImporter(
             [
                 ModuleImport("collections"),
-                ModuleImport("collections.abc"),
                 ModuleImport("functools", "ft"),
                 FromImport("dataclasses", "dataclass"),
                 FromImport("typing", "NamedTuple", "nt"),
@@ -227,7 +182,7 @@ class TestGatherImports:
         assert dir(importer) == ["collections", "dataclass", "ft", "nt"]
 
         assert importer._importers == {
-            "collections": _SubmoduleImports("collections", {"collections.abc"}),
+            "collections": ModuleImport("collections", asname="collections"),
             "dataclass": FromImport("dataclasses", "dataclass"),
             "ft": ModuleImport("functools", "ft"),
             "nt": FromImport("typing", "NamedTuple", "nt"),
@@ -238,15 +193,12 @@ class TestGatherImports:
             "collections", ["defaultdict", ("namedtuple", "nt"), "OrderedDict"]
         )
         from_imp = FromImport("functools", "partial")
-        mod_imp = ModuleImport("importlib.util")
-
-        # Resulting submodule import
-        submod_imp = _SubmoduleImports("importlib", {"importlib.util"})
+        mod_imp = ModuleImport("importlib.util", asname="importlib_util")
 
         importer = LazyImporter([multi_from, from_imp, mod_imp])
 
         assert dir(importer) == sorted(
-            ["defaultdict", "nt", "OrderedDict", "partial", "importlib"]
+            ["defaultdict", "nt", "OrderedDict", "partial", "importlib_util"]
         )
 
         assert importer._importers == {
@@ -254,7 +206,7 @@ class TestGatherImports:
             "nt": multi_from,
             "OrderedDict": multi_from,
             "partial": from_imp,
-            "importlib": submod_imp,
+            "importlib_util": mod_imp,
         }
 
 

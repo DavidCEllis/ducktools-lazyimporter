@@ -7,7 +7,6 @@ from ducktools.lazyimporter import (
     FromImport,
     MultiFromImport,
     TryExceptImport,
-    _SubmoduleImports,
     MultiFromImport,
     get_importer_state,
     get_module_funcs,

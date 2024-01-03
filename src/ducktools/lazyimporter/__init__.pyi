@@ -20,7 +20,7 @@ __all__: list[str] = [
     "get_module_funcs",
 ]
 
-class ImportBase(abc.ABC, metaclass=abc.ABCMeta):
+class ImportBase(metaclass=abc.ABCMeta):
     module_name: str
 
     @property
@@ -38,7 +38,7 @@ class ImportBase(abc.ABC, metaclass=abc.ABCMeta):
 
 class ModuleImport(ImportBase):
     module_name: str
-    asname: str | None
+    asname: str
 
     def __init__(self, module_name: str, asname: str | None = ...) -> None: ...
     def __eq__(self, other) -> bool: ...
@@ -69,13 +69,8 @@ class MultiFromImport(ImportBase):
     def asnames(self): ...
     def do_import(self, globs: dict[str, Any] | None = ...) -> dict[str, Any]: ...
 
-class TryExceptImport(ImportBase):
-    module_name: str
+class _TryExceptImportMixin(metaclass=abc.ABCMeta):
     except_module: str
-    asname: str
-
-    def __init__(self, module_name: str, except_module: str, asname: str) -> None: ...
-    def __eq__(self, other): ...
     @property
     def except_import_level(self) -> int: ...
     @property
@@ -84,9 +79,17 @@ class TryExceptImport(ImportBase):
     def except_module_basename(self) -> str: ...
     @property
     def except_module_names(self) -> list[str]: ...
+
+class TryExceptImport(_TryExceptImportMixin, ImportBase):
+    module_name: str
+    except_module: str
+    asname: str
+
+    def __init__(self, module_name: str, except_module: str, asname: str) -> None: ...
+    def __eq__(self, other): ...
     def do_import(self, globs: dict[str, Any] | None = ...): ...
 
-class TryExceptFromImport(TryExceptImport):
+class TryExceptFromImport(_TryExceptImportMixin, ImportBase):
     module_name: str
     attribute_name: str
     except_module: str
@@ -100,14 +103,6 @@ class TryExceptFromImport(TryExceptImport):
         except_attribute: str,
         asname: str,
     ) -> None: ...
-    def __eq__(self, other): ...
-    def do_import(self, globs: dict[str, Any] | None = ...): ...
-
-class _SubmoduleImports(ImportBase):
-    module_name: str
-    submodules: set[str]
-
-    def __init__(self, module_name, submodules: set[str] | None = ...) -> None: ...
     def __eq__(self, other): ...
     def do_import(self, globs: dict[str, Any] | None = ...): ...
 
