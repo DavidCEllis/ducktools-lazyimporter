@@ -5,7 +5,6 @@ from ducktools.lazyimporter import (
     FromImport,
     MultiFromImport,
     TryExceptImport,
-    _SubmoduleImports,
     MultiFromImport,
     LazyImporter,
 )
@@ -43,7 +42,14 @@ def test_invalid_relative_import():
     with pytest.raises(ValueError) as e:
         _ = ModuleImport(".relative_module")
 
-    assert e.match("Relative imports are not allowed without an assigned name.")
+    assert e.match("Relative import '.relative_module' requires an assigned name.")
+
+
+def test_invalid_submodule_import():
+    with pytest.raises(ValueError) as e:
+        _ = ModuleImport("importlib.util")
+
+    assert e.match("Submodule import 'importlib.util' requires an assigned name.")
 
 
 class TestInvalidIdentifiers:
@@ -73,6 +79,14 @@ class TestInvalidIdentifiers:
 
 
 class TestNameClash:
+    def test_moduleimport_clash(self):
+        with pytest.raises(ValueError) as e:
+            importer = LazyImporter(
+                [ModuleImport("collections"), ModuleImport("collections")],
+                eager_process=True,
+            )
+        assert e.match("'collections' used for multiple imports.")
+
     def test_fromimport_clash(self):
         """
         Multiple FromImports with clashing 'asname' parameters

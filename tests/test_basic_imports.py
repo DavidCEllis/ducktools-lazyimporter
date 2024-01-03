@@ -59,22 +59,6 @@ class TestDirectImports:
 
         assert example_2.item is laz.i
 
-    def test_imports_submod(self):
-        """
-        Test submodules are only imported when used
-        """
-        laz_nosub = LazyImporter([ModuleImport("ex_mod")])
-
-        laz_sub = LazyImporter([ModuleImport("ex_mod.ex_submod")])
-
-        # Import ex_mod
-        assert laz_nosub.ex_mod.name == "ex_mod"
-
-        with pytest.raises(AttributeError):
-            laz_nosub.ex_mod.ex_submod
-
-        assert laz_sub.ex_mod.name == "ex_mod"
-        assert laz_sub.ex_mod.ex_submod.name == "ex_submod"
 
     def test_imports_submod_asname(self):
         laz_sub = LazyImporter([ModuleImport("ex_mod.ex_submod", asname="ex_submod")])
