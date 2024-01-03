@@ -140,8 +140,7 @@ from ducktools.lazyimporter import ModuleImport
 modules = [
     ModuleImport("module"),
     ModuleImport("other_module", "other_name"),
-    ModuleImport("base_module.submodule"),
-    ModuleImport("base_module.submodule", "short_name"),
+    ModuleImport("base_module.submodule", asname="short_name"),
 ]
 ```
 
@@ -150,7 +149,6 @@ is equivalent to
 ```
 import module
 import other_module as other_name
-import base_module.submodule
 import base_module.submodule as short_name
 ```
 
@@ -373,6 +371,8 @@ class IfElseImporter(ImportBase):
 And then use it with:
 
 ```python
+import sys
+
 laz = LazyImporter([
     IfElseImporter(
         condition=sys.version_info >= (3, 11),
