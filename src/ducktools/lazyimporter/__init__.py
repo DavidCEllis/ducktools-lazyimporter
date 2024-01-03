@@ -40,7 +40,7 @@ __all__ = [
 ]
 
 
-class ImportBase(abc.ABC):
+class ImportBase(metaclass=abc.ABCMeta):
     module_name: str
 
     @property
@@ -112,8 +112,9 @@ class ModuleImport(ImportBase):
                 raise ValueError(
                     f"Submodule import {self.module_name!r} requires an assigned name."
                 )
-
-        self.asname = asname if asname is not None else module_name
+            self.asname = module_name
+        else:
+            self.asname = asname
 
         if not self.asname.isidentifier():
             raise ValueError(f"{self.asname!r} is not a valid Python identifier.")
@@ -273,7 +274,49 @@ class MultiFromImport(ImportBase):
         return from_imports
 
 
-class TryExceptImport(ImportBase):
+class _TryExceptImportMixin(metaclass=abc.ABCMeta):
+    except_module: str
+
+    @property
+    def except_import_level(self):
+        level = 0
+        for char in self.except_module:
+            if char != ".":
+                break
+            level += 1
+        return level
+
+    @property
+    def except_module_noprefix(self):
+        """
+        Remove any leading '.' characters from the except_module name.
+        :return:
+        """
+        return self.except_module.lstrip(".")
+
+    @property
+    def except_module_basename(self):
+        """
+        Get the first part of an except module import name.
+        eg: 'importlib' from 'importlib.util'
+
+        :return: name of base module
+        :rtype: str
+        """
+        return self.except_module_noprefix.split(".")[0]
+
+    @property
+    def except_module_names(self):
+        """
+        Get a list of all except submodule names in order.
+        eg: ['util'] from 'importlib.util'
+        :return: List of submodule names.
+        :rtype: list[str]
+        """
+        return self.except_module_noprefix.split(".")[1:]
+
+
+class TryExceptImport(_TryExceptImportMixin, ImportBase):
     module_name: str
     except_module: str
     asname: str
@@ -324,44 +367,6 @@ class TryExceptImport(ImportBase):
             )
         return NotImplemented
 
-    @property
-    def except_import_level(self):
-        level = 0
-        for char in self.except_module:
-            if char != ".":
-                break
-            level += 1
-        return level
-
-    @property
-    def except_module_noprefix(self):
-        """
-        Remove any leading '.' characters from the except_module name.
-        :return:
-        """
-        return self.except_module.lstrip(".")
-
-    @property
-    def except_module_basename(self):
-        """
-        Get the first part of an except module import name.
-        eg: 'importlib' from 'importlib.util'
-
-        :return: name of base module
-        :rtype: str
-        """
-        return self.except_module_noprefix.split(".")[0]
-
-    @property
-    def except_module_names(self):
-        """
-        Get a list of all except submodule names in order.
-        eg: ['util'] from 'importlib.util'
-        :return: List of submodule names.
-        :rtype: list[str]
-        """
-        return self.except_module_noprefix.split(".")[1:]
-
     def do_import(self, globs=None):
         try:
             mod = __import__(
@@ -389,7 +394,7 @@ class TryExceptImport(ImportBase):
         return {self.asname: mod}
 
 
-class TryExceptFromImport(TryExceptImport):
+class TryExceptFromImport(_TryExceptImportMixin, ImportBase):
     module_name: str
     attribute_name: str
     except_module: str
@@ -420,9 +425,14 @@ class TryExceptFromImport(TryExceptImport):
         :param asname: Name to use to access this attribute on the LazyImporter
         :type asname: str
         """
-        super().__init__(module_name, except_module, asname)
+        self.module_name = module_name
+        self.except_module = except_module
+        self.asname = asname
         self.attribute_name = attribute_name
         self.except_attribute = except_attribute
+
+        if not self.asname.isidentifier():
+            raise ValueError(f"{self.asname!r} is not a valid Python identifier.")
 
     def __repr__(self):
         return (
