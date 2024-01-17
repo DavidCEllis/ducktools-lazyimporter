@@ -11,6 +11,7 @@ from ducktools.lazyimporter import (
     get_importer_state,
     get_module_funcs,
     LazyImporter,
+    force_imports,
 )
 
 
@@ -58,3 +59,19 @@ class TestModuleFuncs:
 
         assert "name" in dir(ex_othermod)
         assert "submod_name" in dir(ex_othermod)
+
+
+def test_force_imports():
+    laz = LazyImporter([FromImport("example_modules.ex_mod", "name")])
+
+    assert get_importer_state(laz) == {
+        "imported_attributes": {},
+        "lazy_attributes": ["name"],
+    }
+
+    force_imports(laz)
+
+    assert get_importer_state(laz) == {
+        "imported_attributes": {"name": "ex_mod"},
+        "lazy_attributes": [],
+    }

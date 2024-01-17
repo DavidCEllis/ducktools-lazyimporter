@@ -18,6 +18,7 @@ __all__: list[str] = [
     "ImportBase",
     "get_importer_state",
     "get_module_funcs",
+    "force_imports",
 ]
 
 class ImportBase(metaclass=abc.ABCMeta):
@@ -143,3 +144,4 @@ def get_module_funcs(
     importer: LazyImporter,
     module_name: str | None = ...,
 ) -> tuple[types.FunctionType, types.FunctionType]: ...
+def force_imports(importer: LazyImporter) -> None: ...

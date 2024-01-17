@@ -37,6 +37,7 @@ __all__ = [
     "ImportBase",
     "get_importer_state",
     "get_module_funcs",
+    "force_imports",
 ]
 
 
@@ -690,3 +691,17 @@ def get_module_funcs(importer, module_name=None):
         return dir_data
 
     return __getattr__, __dir__
+
+
+def force_imports(importer):
+    """
+    Force the importer to perform all imports.
+
+    This is intended as a debug tool to make sure that all of the imports
+    defined will work.
+
+    :param importer: The LazyImporter instance
+    :type importer: LazyImporter
+    """
+    for attrib_name in dir(importer):
+        _ = getattr(importer, attrib_name)
