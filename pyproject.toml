@@ -27,6 +27,9 @@ classifiers = [
 dynamic = ['version']
 license = {file = "LICENSE.md"}
 
+[project.urls]
+Homepage = "https://github.com/davidcellis/ducktools-lazyimporter"
+
 [project.optional-dependencies]
 testing = ["pytest", "pytest-cov"]
 docs = ["sphinx", "myst-parser", "sphinx_rtd_theme"]
