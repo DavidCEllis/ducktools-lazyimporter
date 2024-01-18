@@ -374,7 +374,7 @@ import sys
 
 laz = LazyImporter([
     IfElseImporter(
-        condition=sys.version_info >= (3, 11),
+        condition=sys.version_info >= (3, 12),
         module_name="tomllib",
         else_module_name="tomli",
         asname="tomllib",
