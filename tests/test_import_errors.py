@@ -6,7 +6,6 @@ from ducktools.lazyimporter import (
     MultiFromImport,
     TryExceptImport,
     TryExceptFromImport,
-    MultiFromImport,
     LazyImporter,
 )
 
