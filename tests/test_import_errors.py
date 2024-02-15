@@ -5,7 +5,7 @@ from ducktools.lazyimporter import (
     FromImport,
     MultiFromImport,
     TryExceptImport,
-    MultiFromImport,
+    TryExceptFromImport,
     LazyImporter,
 )
 
@@ -75,6 +75,17 @@ class TestInvalidIdentifiers:
         with pytest.raises(ValueError) as e:
             _ = TryExceptImport("modname", "altmod", "##invalid_identifier##")
 
+        assert e.match(f"'##invalid_identifier##' is not a valid Python identifier.")
+
+    def test_tryexceptfromimport_invalid(self):
+        with pytest.raises(ValueError) as e:
+            _ = TryExceptFromImport(
+                "modname",
+                "attribname",
+                "altmod",
+                "altattribute",
+                "##invalid_identifier##",
+            )
         assert e.match(f"'##invalid_identifier##' is not a valid Python identifier.")
 
 

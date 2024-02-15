@@ -21,4 +21,5 @@
 ```{eval-rst}
 .. autofunction:: ducktools.lazyimporter::get_importer_state
 .. autofunction:: ducktools.lazyimporter::get_module_funcs
+.. autofunction:: ducktools.lazyimporter::force_imports
 ```
