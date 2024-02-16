@@ -50,8 +50,7 @@ But...
 
 Most implementations rely on stdlib modules that are themselves slow to import
 (for example: typing, importlib.util, logging, inspect, ast).
-By contrast `lazyimporter` only uses modules that python imports on launch
-as part of `site`.
+By contrast `lazyimporter` only uses modules that python imports on launch.
 
 `lazyimporter` does not attempt to propagate laziness, only the modules provided
 to `lazyimporter` directly will be imported lazily. Any subdependencies of those 
