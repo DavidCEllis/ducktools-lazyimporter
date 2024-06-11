@@ -9,6 +9,7 @@ from ducktools.lazyimporter import (
     MultiFromImport,
     TryExceptImport,
     TryExceptFromImport,
+    TryElseFromImport,
 )
 
 
@@ -58,7 +59,6 @@ class TestDirectImports:
         import example_2  # noqa  # pyright: ignore
 
         assert example_2.item is laz.i
-
 
     def test_imports_submod_asname(self):
         laz_sub = LazyImporter([ModuleImport("ex_mod.ex_submod", asname="ex_submod")])
@@ -142,6 +142,33 @@ class TestDirectImports:
         )
 
         assert laz.name == "ex_submod"
+
+    def test_try_else_from_import(self):
+        test_obj = object()
+
+        laz = LazyImporter(
+            [TryElseFromImport("ex_mod", "name", test_obj, "name")]
+        )
+
+        assert laz.name == "ex_mod"
+
+        laz = LazyImporter(
+            [
+                TryElseFromImport(
+                    "module_does_not_exist", "name", test_obj, "name"
+                )
+            ]
+        )
+
+        assert laz.name is test_obj
+
+        laz = LazyImporter(
+            [
+                TryElseFromImport("inspect", "invalid_attribute", test_obj, "name")
+            ]
+        )
+
+        assert laz.name is test_obj
 
 
 class TestRelativeImports:

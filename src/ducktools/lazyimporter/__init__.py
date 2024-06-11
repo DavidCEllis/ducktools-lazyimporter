@@ -496,6 +496,62 @@ class TryExceptFromImport(_TryExceptImportMixin, ImportBase):
         return {self.asname: attrib}
 
 
+class TryElseFromImport(ImportBase):
+    def __init__(self, module_name, attribute_name, fallback, asname):
+        self.module_name = module_name
+        self.attribute_name = attribute_name
+        self.fallback = fallback
+        self.asname = asname
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}("
+            f"module_name={self.module_name!r}, "
+            f"attribute_name={self.attribute_name!r}, "
+            f"fallback={self.fallback!r}, "
+            f"asname={self.asname!r}"
+            f")"
+        )
+
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return (
+                self.module_name,
+                self.attribute_name,
+                self.fallback,
+                self.asname,
+            ) == (
+                other.module_name,
+                other.attribute_name,
+                other.fallback,
+                other.asname,
+            )
+        return NotImplemented
+
+    def do_import(self, globs=None):
+        try:
+            mod = __import__(
+                self.module_name_noprefix,
+                globals=globs,
+                level=self.import_level,
+            )
+        except ImportError:
+            attrib = self.fallback
+        else:
+            submod_used = [self.module_basename]
+            for submod in self.submodule_names:
+                submod_used.append(submod)
+                mod = getattr(mod, submod)
+
+            try:
+                attrib = getattr(mod, self.attribute_name)
+            except AttributeError:
+                attrib = self.fallback
+
+        return {self.asname: attrib}
+
+
+
 class _ImporterGrouper:
     def __init__(self):
         self._name = None
