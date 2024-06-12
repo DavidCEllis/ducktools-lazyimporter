@@ -9,7 +9,7 @@ from ducktools.lazyimporter import (
     MultiFromImport,
     TryExceptImport,
     TryExceptFromImport,
-    TryElseFromImport,
+    TryFallbackImport,
 )
 
 
@@ -143,32 +143,34 @@ class TestDirectImports:
 
         assert laz.name == "ex_submod"
 
-    def test_try_else_from_import(self):
+    def test_try_fallback_import(self):
+        # noinspection PyUnresolvedReferences
+        import ex_mod
         test_obj = object()
 
         laz = LazyImporter(
-            [TryElseFromImport("ex_mod", "name", test_obj, "name")]
+            [TryFallbackImport("ex_mod", test_obj)]
         )
 
-        assert laz.name == "ex_mod"
+        assert laz.ex_mod is ex_mod
 
         laz = LazyImporter(
-            [
-                TryElseFromImport(
-                    "module_does_not_exist", "name", test_obj, "name"
-                )
-            ]
+            [TryFallbackImport("ex_mod", test_obj, "module_name")]
         )
 
-        assert laz.name is test_obj
+        assert laz.module_name is ex_mod
 
         laz = LazyImporter(
-            [
-                TryElseFromImport("inspect", "invalid_attribute", test_obj, "name")
-            ]
+            [TryFallbackImport("module_does_not_exist", test_obj)]
         )
 
-        assert laz.name is test_obj
+        assert laz.module_does_not_exist is test_obj
+
+        laz = LazyImporter(
+            [TryFallbackImport("module_does_not_exist", test_obj, "module_name")]
+        )
+
+        assert laz.module_name is test_obj
 
 
 class TestRelativeImports:

@@ -113,18 +113,16 @@ class TryExceptFromImport(_TryExceptImportMixin, ImportBase):
     def __eq__(self, other) -> bool: ...
     def do_import(self, globs: dict[str, Any] | None = ...): ...
 
-class TryElseFromImport(ImportBase):
+class TryFallbackImport(ImportBase):
         module_name: str
-        attribute_name: str
         fallback: Any
         asname: str
 
         def __init__(
                 self,
                 module_name: str,
-                attribute_name: str,
                 fallback: Any,
-                asname: str,
+                asname: str | None = None,
         ) -> None: ...
         def __repr__(self) -> str: ...
         def __eq__(self, other) -> bool: ...

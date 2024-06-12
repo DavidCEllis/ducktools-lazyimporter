@@ -496,18 +496,31 @@ class TryExceptFromImport(_TryExceptImportMixin, ImportBase):
         return {self.asname: attrib}
 
 
-class TryElseFromImport(ImportBase):
-    def __init__(self, module_name, attribute_name, fallback, asname):
+class TryFallbackImport(ImportBase):
+    def __init__(self, module_name, fallback, asname=None):
         self.module_name = module_name
-        self.attribute_name = attribute_name
         self.fallback = fallback
-        self.asname = asname
+
+        if asname is None:
+            if self.import_level > 0:
+                raise ValueError(
+                    f"Relative import {self.module_name!r} requires an assigned name."
+                )
+            elif self.submodule_names:
+                raise ValueError(
+                    f"Submodule import {self.module_name!r} requires an assigned name."
+                )
+            self.asname = module_name
+        else:
+            self.asname = asname
+
+        if not self.asname.isidentifier():
+            raise ValueError(f"{self.asname!r} is not a valid Python identifier.")
 
     def __repr__(self):
         return (
             f"{self.__class__.__name__}("
             f"module_name={self.module_name!r}, "
-            f"attribute_name={self.attribute_name!r}, "
             f"fallback={self.fallback!r}, "
             f"asname={self.asname!r}"
             f")"
@@ -517,12 +530,10 @@ class TryElseFromImport(ImportBase):
         if self.__class__ is other.__class__:
             return (
                 self.module_name,
-                self.attribute_name,
                 self.fallback,
                 self.asname,
             ) == (
                 other.module_name,
-                other.attribute_name,
                 other.fallback,
                 other.asname,
             )
@@ -536,20 +547,12 @@ class TryElseFromImport(ImportBase):
                 level=self.import_level,
             )
         except ImportError:
-            attrib = self.fallback
+            mod = self.fallback
         else:
-            submod_used = [self.module_basename]
             for submod in self.submodule_names:
-                submod_used.append(submod)
                 mod = getattr(mod, submod)
 
-            try:
-                attrib = getattr(mod, self.attribute_name)
-            except AttributeError:
-                attrib = self.fallback
-
-        return {self.asname: attrib}
-
+        return {self.asname: mod}
 
 
 class _ImporterGrouper:
