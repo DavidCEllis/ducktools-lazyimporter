@@ -26,7 +26,7 @@ when first accessed.
 import abc
 import sys
 
-__version__ = "v0.4.0"
+__version__ = "v0.5.0"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
@@ -34,6 +34,7 @@ __all__ = [
     "MultiFromImport",
     "TryExceptImport",
     "TryExceptFromImport",
+    "TryFallbackImport",
     "ImportBase",
     "get_importer_state",
     "get_module_funcs",
