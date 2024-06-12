@@ -8,7 +8,19 @@ from typing import (
 import types
 
 __version__: str
-__all__: list[str]
+__all__: list[str] = [
+    "LazyImporter",
+    "ModuleImport",
+    "FromImport",
+    "MultiFromImport",
+    "TryExceptImport",
+    "TryExceptFromImport",
+    "TryFallbackImport",
+    "ImportBase",
+    "get_importer_state",
+    "get_module_funcs",
+    "force_imports",
+]
 
 class ImportBase(metaclass=abc.ABCMeta):
     module_name: str
