@@ -179,7 +179,7 @@ from collections import namedtuple, defaultdict as dd
 
 when provided to a LazyImporter.
 
-### TryExceptImport ###
+### TryExceptImport, TryExceptFromImport and TryFallbackImport ###
 
 `TryExceptImport` is used for compatibility where a module may not be available
 and so a fallback module providing the same functionality should be used. For
@@ -187,20 +187,32 @@ example when a newer version of python has a stdlib module that has replaced
 a third party module that was used previously.
 
 ```python
-from ducktools.lazyimporter import TryExceptImport
+from ducktools.lazyimporter import TryExceptImport, TryExceptFromImport, TryFallbackImport
 
 modules = [
     TryExceptImport("tomllib", "tomli", "tomllib"),
+    TryExceptFromImport("tomllib", "loads", "tomli", "loads", "loads"),
+    TryFallbackImport("tomli", None),
 ]
 ```
 
-is equivalent to
+is roughly equivalent to
 
 ```python
 try:
     import tomllib as tomllib
 except ImportError:
     import tomli as tomllib
+
+try:
+    from tomllib import loads as loads
+except ImportError:
+    from tomli import loads as loads
+
+try:
+    import tomli
+except ImportError:
+    tomli = None
 ```
 
 when provided to a LazyImporter.

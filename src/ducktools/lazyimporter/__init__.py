@@ -26,7 +26,7 @@ when first accessed.
 import abc
 import sys
 
-__version__ = "v0.4.0"
+__version__ = "v0.5.0"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
@@ -34,6 +34,7 @@ __all__ = [
     "MultiFromImport",
     "TryExceptImport",
     "TryExceptFromImport",
+    "TryFallbackImport",
     "ImportBase",
     "get_importer_state",
     "get_module_funcs",
@@ -494,6 +495,65 @@ class TryExceptFromImport(_TryExceptImportMixin, ImportBase):
             attrib = getattr(mod, self.attribute_name)
 
         return {self.asname: attrib}
+
+
+class TryFallbackImport(ImportBase):
+    def __init__(self, module_name, fallback, asname=None):
+        self.module_name = module_name
+        self.fallback = fallback
+
+        if asname is None:
+            if self.import_level > 0:
+                raise ValueError(
+                    f"Relative import {self.module_name!r} requires an assigned name."
+                )
+            elif self.submodule_names:
+                raise ValueError(
+                    f"Submodule import {self.module_name!r} requires an assigned name."
+                )
+            self.asname = module_name
+        else:
+            self.asname = asname
+
+        if not self.asname.isidentifier():
+            raise ValueError(f"{self.asname!r} is not a valid Python identifier.")
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}("
+            f"module_name={self.module_name!r}, "
+            f"fallback={self.fallback!r}, "
+            f"asname={self.asname!r}"
+            f")"
+        )
+
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return (
+                self.module_name,
+                self.fallback,
+                self.asname,
+            ) == (
+                other.module_name,
+                other.fallback,
+                other.asname,
+            )
+        return NotImplemented
+
+    def do_import(self, globs=None):
+        try:
+            mod = __import__(
+                self.module_name_noprefix,
+                globals=globs,
+                level=self.import_level,
+            )
+        except ImportError:
+            mod = self.fallback
+        else:
+            for submod in self.submodule_names:
+                mod = getattr(mod, submod)
+
+        return {self.asname: mod}
 
 
 class _ImporterGrouper:
