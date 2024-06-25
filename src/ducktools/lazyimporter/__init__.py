@@ -24,6 +24,7 @@ Tools to make a lazy importer object that can be set up to import
 when first accessed.
 """
 import abc
+import os
 import sys
 
 __version__ = "v0.5.0"
@@ -40,6 +41,9 @@ __all__ = [
     "get_module_funcs",
     "force_imports",
 ]
+
+EAGER_PROCESS = os.environ.get("DUCKTOOLS_EAGER_PROCESS", "false").lower() != "false"
+EAGER_IMPORT = os.environ.get("DUCKTOOLS_EAGER_IMPORT", "false").lower() != "false"
 
 
 class ImportBase(metaclass=abc.ABCMeta):
@@ -593,6 +597,8 @@ class _ImporterGrouper:
         """
         importers = {}
 
+        reserved_names = vars(type(inst)).keys() | vars(inst).keys()
+
         for imp in inst._imports:  # noqa
             if getattr(imp, "import_level", 0) > 0 and inst._globals is None:  # noqa
                 raise ValueError(
@@ -601,6 +607,8 @@ class _ImporterGrouper:
 
             # import x, import x.y as z OR from x import y
             if asname := getattr(imp, "asname", None):
+                if asname in reserved_names:
+                    raise ValueError(f"{asname!r} clashes with a LazyImporter internal name.")
                 if asname in importers:
                     raise ValueError(f"{asname!r} used for multiple imports.")
                 importers[asname] = imp
@@ -608,6 +616,8 @@ class _ImporterGrouper:
             # from x import y, z ...
             elif asnames := getattr(imp, "asnames", None):
                 for asname in asnames:
+                    if asname in reserved_names:
+                        raise ValueError(f"{asname!r} clashes with a LazyImporter internal name.")
                     if asname in importers:
                         raise ValueError(f"{asname!r} used for multiple imports.")
                     importers[asname] = imp
@@ -622,30 +632,40 @@ class _ImporterGrouper:
 
 class LazyImporter:
     _imports: "list[ImportBase]"
-    _globals: dict
+    _globals: "dict | None"
 
     _importers = _ImporterGrouper()
 
-    def __init__(self, imports, *, globs=None, eager_process=False):
+    def __init__(self, imports, *, globs=None, eager_process=None, eager_import=None):
         """
         Create a LazyImporter to import modules and objects when they are accessed
         on this importer object.
 
         globals() must be provided to the importer if relative imports are used.
 
+        eager_process and eager_import are included to help with debugging, there are
+        global variables (that will be pulled from environment variables) that can be
+        used to force all processing or imports to be done eagerly. These can be
+        overridden by providing arguments here.
+
         :param imports: list of imports
         :type imports: list[ImportBase]
         :param globs: globals object for relative imports
         :type globs: dict[str, typing.Any]
         :param eager_process: filter and check the imports eagerly
-        :type eager_process: bool
+        :type eager_process: Optional[bool]
+        :param eager_import: perform all imports eagerly
+        :type eager_import: Optional[bool]
         """
         # Keep original imports for __repr__
         self._imports = imports
         self._globals = globs
 
-        if eager_process:
+        if eager_process or (EAGER_PROCESS and eager_process is None):
             _ = self._importers
+
+        if eager_import or (EAGER_IMPORT and eager_import is None):
+            force_imports(self)
 
     def __getattr__(self, name):
         # This performs the imports associated with the name of the attribute
@@ -764,4 +784,4 @@ def force_imports(importer):
     :type importer: LazyImporter
     """
     for attrib_name in dir(importer):
-        _ = getattr(importer, attrib_name)
+        getattr(importer, attrib_name)

@@ -10,6 +10,7 @@ from ducktools.lazyimporter import (
     TryExceptImport,
     TryExceptFromImport,
     TryFallbackImport,
+    get_importer_state,
 )
 
 
@@ -188,3 +189,23 @@ class TestRelativeImports:
         from example_modules.ex_othermod import laz
 
         assert laz.submod_name == "ex_submod"
+
+
+class TestEager:
+    def test_eager_process(self):
+        laz = LazyImporter([ModuleImport("functools")], eager_process=False)
+
+        assert "_importers" not in vars(laz)
+
+        laz = LazyImporter([ModuleImport("functools")], eager_process=True)
+
+        assert "_importers" in vars(laz)
+
+    def test_eager_import(self):
+        laz = LazyImporter([ModuleImport("functools")], eager_import=False)
+
+        assert "functools" not in vars(laz)
+
+        laz = LazyImporter([ModuleImport("functools")], eager_import=True)
+
+        assert "functools" in vars(laz)
