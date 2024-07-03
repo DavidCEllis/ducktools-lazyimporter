@@ -22,6 +22,9 @@ __all__: list[str] = [
     "force_imports",
 ]
 
+EAGER_PROCESS: bool
+EAGER_IMPORT: bool
+
 class ImportBase(metaclass=abc.ABCMeta):
     module_name: str
 
@@ -148,7 +151,8 @@ class LazyImporter:
         imports: list[ImportBase],
         *,
         globs: dict[str, Any] | None = ...,
-        eager_process: bool = ...,
+        eager_process: bool | None = ...,
+        eager_import: bool | None = ...,
     ) -> None: ...
     def __getattr__(self, name: str) -> types.ModuleType | Any: ...
     def __dir__(self): ...

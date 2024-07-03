@@ -82,6 +82,24 @@ laz = LazyImporter(
 __getattr__, __dir__ = get_module_funcs(laz, __name__)
 ```
 
+## Environment Variables ##
+
+There are two environment variables that can be used to modify the behaviour for
+debugging purposes.
+
+If `DUCKTOOLS_EAGER_PROCESS` is set to any value other than 'False' (case insensitive)
+the initial processing of imports will be done on instance creation.
+
+Similarly if `DUCKTOOLS_EAGER_IMPORT` is set to any value other than 'False' all imports
+will be performed eagerly on instance creation (this will also force processing on import).
+
+If they are unset this is equivalent to being set to False.
+
+If there is a lazy importer where it is known this will not work 
+(for instance if it is managing a circular dependency issue)
+these can be overridden for an importer by passing values to `eager_process` and/or 
+`eager_import` arguments to the `LazyImporter` constructer as keyword arguments.
+
 ## How does it work ##
 
 The following lazy importer:

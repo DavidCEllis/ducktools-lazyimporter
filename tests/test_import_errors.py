@@ -143,6 +143,16 @@ class TestNameClash:
 
         assert e.match("'matching_mod_name' used for multiple imports.")
 
+    def test_reserved_name(self):
+        with pytest.raises(ValueError) as e:
+            laz = LazyImporter(
+                [
+                    FromImport("mod1", "objname", "_importers"),
+                ],
+                eager_process=True,
+            )
+
+        assert e.match("'_importers' clashes with a LazyImporter internal name.")
 
 class TestNoGlobals:
     def test_relative_module_noglobals(self):
