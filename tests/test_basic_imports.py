@@ -2,6 +2,8 @@ import sys
 
 import pytest
 
+import ducktools.lazyimporter as lazyimporter
+
 from ducktools.lazyimporter import (
     LazyImporter,
     ModuleImport,
@@ -209,3 +211,71 @@ class TestEager:
         laz = LazyImporter([ModuleImport("functools")], eager_import=True)
 
         assert "functools" in vars(laz)
+
+    def test_eager_process_glob(self):
+        initial_state = lazyimporter.EAGER_PROCESS
+
+        lazyimporter.EAGER_PROCESS = False
+
+        # EAGER_PROCESS = False and no value - should lazily process
+        laz = LazyImporter([ModuleImport("functools")])
+        assert "_importers" not in vars(laz)
+
+        # EAGER_PROCESS = False and eager_process = False - should lazily process
+        laz = LazyImporter([ModuleImport("functools")], eager_process=False)
+        assert "_importers" not in vars(laz)
+
+        # EAGER_PROCESS = False and eager_process = True - should eagerly process
+        laz = LazyImporter([ModuleImport("functools")], eager_process=True)
+        assert "_importers" in vars(laz)
+
+        lazyimporter.EAGER_PROCESS = True
+
+        # EAGER_PROCESS = True and no value - should eagerly process
+        laz = LazyImporter([ModuleImport("functools")])
+        assert "_importers" in vars(laz)
+
+        # EAGER_PROCESS = True and eager_process = False - should lazily process
+        laz = LazyImporter([ModuleImport("functools")], eager_process=False)
+        assert "_importers" not in vars(laz)
+
+        # EAGER_PROCESS = True and eager_process = True - should eagerly process
+        laz = LazyImporter([ModuleImport("functools")], eager_process=True)
+        assert "_importers" in vars(laz)
+
+        # Restore state
+        lazyimporter.EAGER_PROCESS = initial_state
+
+    def test_eager_import_glob(self):
+        initial_state = lazyimporter.EAGER_IMPORT
+
+        lazyimporter.EAGER_IMPORT = False
+
+        # EAGER_IMPORT = False and no value - should lazily import
+        laz = LazyImporter([ModuleImport("functools")])
+        assert "functools" not in vars(laz)
+
+        # EAGER_IMPORT = False and eager_import = False - should lazily import
+        laz = LazyImporter([ModuleImport("functools")], eager_import=False)
+        assert "functools" not in vars(laz)
+
+        # EAGER_IMPORT = False and eager_import = True - should eagerly import
+        laz = LazyImporter([ModuleImport("functools")], eager_import=True)
+        assert "functools" in vars(laz)
+
+        lazyimporter.EAGER_IMPORT = True
+
+        # EAGER_IMPORT = True and no value - should eagerly import
+        laz = LazyImporter([ModuleImport("functools")])
+        assert "functools" in vars(laz)
+
+        # EAGER_IMPORT = True and eager_import = False - should lazily import
+        laz = LazyImporter([ModuleImport("functools")], eager_import=False)
+        assert "functools" not in vars(laz)
+
+        # EAGER_IMPORT = True and eager_import = True - should eagerly import
+        laz = LazyImporter([ModuleImport("functools")], eager_import=True)
+        assert "functools" in vars(laz)
+
+        # Restore state
+        lazyimporter.EAGER_IMPORT = initial_state
