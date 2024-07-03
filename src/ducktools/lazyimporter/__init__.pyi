@@ -22,6 +22,9 @@ __all__: list[str] = [
     "force_imports",
 ]
 
+EAGER_PROCESS: bool
+EAGER_IMPORT: bool
+
 class ImportBase(metaclass=abc.ABCMeta):
     module_name: str
 
