@@ -10,7 +10,7 @@ Subclasses of `ImportBase` require 3 things:
 `asname` or `asnames` must be either the identifier or a list of identifiers 
 (respectively) to use to store attributes. This can be an attribute or a property.
 
-`do_import` must be a method that takes 2 arguments `(self, globs=None)`, performs
+`import_objects` must be a method that takes 2 arguments `(self, globs=None)`, performs
 the import and returns a dictionary of the form `{asname: <object>, ...}` for all of
 the names defined in `asname`/`asnames`.
 
@@ -42,7 +42,7 @@ class IfElseImporter(ImportBase):
         if not self.asname.isidentifier():
             raise ValueError(f"{self.asname} is not a valid python identifier.")
         
-    def do_import(self, globs=None):
+    def import_objects(self, globs=None):
         if globs is not None:
             package = globs.get('__name__')
         else:

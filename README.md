@@ -42,6 +42,41 @@ def is_newer_version(version_no: str) -> bool:
 print(is_newer_version("v0.2.0"))
 ```
 
+## Why use a lazy importer? ##
+
+One obvious use case is if you are creating a simple CLI application that you wish to feel fast.
+If the application has multiple pathways a lazy importer can improve performance by avoiding
+loading the modules that are only needed for heavier pathways. (It may also be worth looking
+at what library you are using for CLI argument parsing.)
+
+I created this so I could use it on my own projects so here's an example of the performance
+of `ducktools-env` with and without lazy imports.
+
+With lazy imports:
+```commandline
+hyperfine -w3 -r20 "python -m ducktools.env run examples\inline\empty_312_env.py"
+```
+```
+Benchmark 1: python -m ducktools.env run examples\inline\empty_312_env.py
+  Time (mean ± σ):      87.1 ms ±   1.1 ms    [User: 52.2 ms, System: 22.4 ms]
+  Range (min … max):    85.2 ms …  89.1 ms    20 runs
+```
+
+Without lazy imports (by setting `DUCKTOOLS_EAGER_IMPORT=true`):
+```commandline
+hyperfine -w3 -r20 "python -m ducktools.env run examples\inline\empty_312_env.py"
+```
+```
+Benchmark 1: python -m ducktools.env run examples\inline\empty_312_env.py
+  Time (mean ± σ):     144.2 ms ±   1.4 ms    [User: 84.8 ms, System: 45.3 ms]
+  Range (min … max):   141.0 ms … 146.7 ms    20 runs
+```
+
+In this case the module is searching for a matching python environment to run the script in, 
+the environment already exists and is cached so there is no need to load the code required 
+for constructing new environments. This timer includes the time to relaunch the correct
+python environment and run the (empty) script.
+
 ## Hasn't this already been done ##
 
 Yes.
@@ -50,10 +85,10 @@ But...
 
 Most implementations rely on stdlib modules that are themselves slow to import
 (for example: typing, importlib.util, logging, inspect, ast).
-By contrast `lazyimporter` only uses modules that python imports on launch.
+By contrast `ducktools-lazyimporter` only uses modules that python imports on launch.
 
-`lazyimporter` does not attempt to propagate laziness, only the modules provided
-to `lazyimporter` directly will be imported lazily. Any subdependencies of those 
+`ducktools-lazyimporter` does not attempt to propagate laziness, only the modules provided
+to `ducktools-lazyimporter` directly will be imported lazily. Any subdependencies of those 
 modules will be imported eagerly as if the import statement is placed where the 
 importer attribute is first accessed. 
 
@@ -216,6 +251,24 @@ except ImportError:
 ```
 
 when provided to a LazyImporter.
+
+## Environment Variables ##
+
+There are two environment variables that can be used to modify the behaviour for
+debugging purposes.
+
+If `DUCKTOOLS_EAGER_PROCESS` is set to any value other than 'False' (case insensitive)
+the initial processing of imports will be done on instance creation.
+
+Similarly if `DUCKTOOLS_EAGER_IMPORT` is set to any value other than 'False' all imports
+will be performed eagerly on instance creation (this will also force processing on import).
+
+If they are unset this is equivalent to being set to False.
+
+If there is a lazy importer where it is known this will not work 
+(for instance if it is managing a circular dependency issue)
+these can be overridden for an importer by passing values to `eager_process` and/or 
+`eager_import` arguments to the `LazyImporter` constructer as keyword arguments.
 
 ## How does it work ##
 

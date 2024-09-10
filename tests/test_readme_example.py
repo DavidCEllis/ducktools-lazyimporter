@@ -15,7 +15,7 @@ class IfElseImporter(ImportBase):
         if not self.asname.isidentifier():
             raise ValueError(f"{self.asname} is not a valid python identifier.")
 
-    def do_import(self, globs=None):
+    def import_objects(self, globs=None):
         if globs is not None:
             package = globs.get('__name__')
         else:
