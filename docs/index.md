@@ -17,7 +17,7 @@ Ducktools: Lazy Importer is a module intended to make it easier to defer
 imports until needed without requiring the import statement to be written
 in-line.
 
-The goal of deferring imports is to avoid importing modules that is not guaranteed
+The goal of deferring imports is to avoid importing modules that are not guaranteed
 to be used in the course of running an application.
 
 This can be done both on the side of the application, in deferring imports

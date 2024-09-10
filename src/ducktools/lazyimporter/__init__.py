@@ -27,7 +27,7 @@ import abc
 import os
 import sys
 
-__version__ = "v0.5.1"
+__version__ = "v0.6.0"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
@@ -84,7 +84,7 @@ class ImportBase(metaclass=abc.ABCMeta):
         return self.module_name_noprefix.split(".")[1:]
 
     @abc.abstractmethod
-    def do_import(self, globs=None):
+    def import_objects(self, globs=None):
         """
         Perform the imports defined and return a dictionary.
 
@@ -138,7 +138,7 @@ class ModuleImport(ImportBase):
             return (self.module_name, self.asname) == (other.module_name, other.asname)
         return NotImplemented
 
-    def do_import(self, globs=None):
+    def import_objects(self, globs=None):
         mod = __import__(
             self.module_name_noprefix,
             globals=globs,
@@ -193,7 +193,7 @@ class FromImport(ImportBase):
             )
         return NotImplemented
 
-    def do_import(self, globs=None):
+    def import_objects(self, globs=None):
         # Perform the import
         mod = __import__(
             self.module_name_noprefix,
@@ -260,7 +260,7 @@ class MultiFromImport(ImportBase):
 
         return names
 
-    def do_import(self, globs=None):
+    def import_objects(self, globs=None):
         from_imports = {}
 
         # Perform the import
@@ -373,7 +373,7 @@ class TryExceptImport(_TryExceptImportMixin, ImportBase):
             )
         return NotImplemented
 
-    def do_import(self, globs=None):
+    def import_objects(self, globs=None):
         try:
             mod = __import__(
                 self.module_name_noprefix,
@@ -468,7 +468,7 @@ class TryExceptFromImport(_TryExceptImportMixin, ImportBase):
             )
         return NotImplemented
 
-    def do_import(self, globs=None):
+    def import_objects(self, globs=None):
         try:
             mod = __import__(
                 self.module_name_noprefix,
@@ -544,7 +544,7 @@ class TryFallbackImport(ImportBase):
             )
         return NotImplemented
 
-    def do_import(self, globs=None):
+    def import_objects(self, globs=None):
         try:
             mod = __import__(
                 self.module_name_noprefix,
@@ -679,7 +679,7 @@ class LazyImporter:
                 f"{self.__class__.__name__!r} object has no attribute {name!r}"
             )
 
-        import_data = importer.do_import(globs=self._globals)
+        import_data = importer.import_objects(globs=self._globals)
         for key, value in import_data.items():
             setattr(self, key, value)
 
