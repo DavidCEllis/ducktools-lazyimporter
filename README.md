@@ -144,9 +144,9 @@ __all__ = [..., "useful_tool"]
 
 laz = LazyImporter(
     [FromImport(".submodule", "useful_tool")],
-    globs=globals(),  # If relative imports are used, globals() must be provided.
+    globs=globals(),  # globals() is used for relative imports, LazyImporter will attempt to infer it if not provided
 )
-__getattr__, __dir__ = get_module_funcs(laz, __name__)
+__getattr__, __dir__ = get_module_funcs(laz, __name__)  # __name__ will also be inferred if not given
 ```
 
 ## The import classes ##
@@ -251,6 +251,39 @@ except ImportError:
 ```
 
 when provided to a LazyImporter.
+
+## Experimental import statement capture ##
+
+There is an **experimental** mode that can capture import statements within a context block.
+
+```python
+from ducktools.lazyimporter import LazyImporter, get_importer_state
+from ducktools.lazyimporter.capture import capture_imports
+
+laz = LazyImporter()
+
+with capture_imports(laz):
+    # Inside this block, imports are captured and converted to lazy imports on laz
+    import functools
+    from collections import namedtuple as nt
+
+print(get_importer_state(laz))
+
+# Note that the captured imports are *not* available in the module namespace
+try:
+    functools
+except NameError:
+    print("functools is not here")
+```
+
+Imports are placed on the lazy importer object as with the explicit syntax.
+
+This works by replacing and restoring the builtin `__import__` function that is called by the
+import statement while in the block. 
+
+**If other modules are also replacing `__import__` simultaneously this may cause issues.**
+
+Imports triggered in other modules while within the context block **should** work eagerly as usual.
 
 ## Environment Variables ##
 
