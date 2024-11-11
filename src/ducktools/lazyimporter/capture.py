@@ -1,4 +1,5 @@
 import builtins
+import importlib
 import sys
 
 from . import ModuleImport, MultiFromImport, extend_imports
@@ -163,7 +164,13 @@ class capture_imports:
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Restore import state
         if builtins.__import__ is not self.import_func:
-            raise CaptureError("Importer was replaced while in import block")
+            # If the importer has been changed while in use restore to a default
+            # importlib.__import__
+            builtins.__import__ = importlib.__import__
+            raise CaptureError(
+                "Importer was replaced while in import block. "
+                "Restored to 'importlib.__import__'."
+            )
 
         builtins.__import__ = self.previous_import_func
 
@@ -182,7 +189,6 @@ class capture_imports:
         from_imports = {}  # dict of module_name: [(attrib, asname), ..]
 
         # Imports within class/function bodies can appear in locals
-        # Make a copy of locals/globs for iteration as it will be modified
         # Retrace and collect the importers
         locs = dict(sys._getframe(1).f_locals)
 
@@ -193,6 +199,7 @@ class capture_imports:
             spaces = [self.globs]
 
         for ns in spaces:
+            # Copy as the original may be mutated.
             for key, value in ns.copy().items():
                 if isinstance(value, _ImportPlaceholder):
                     attrib_name = value.attrib_name
@@ -224,8 +231,8 @@ class capture_imports:
                         try:
                             del ns[key]
                         except TypeError:
-                            # Can't delete via local namespace proxy
-                            pass
+                            # Can't delete via local namespace proxy - set to None
+                            ns[key] = None
 
         final_imports.extend([MultiFromImport(k, v) for k, v in from_imports.items()])
 
