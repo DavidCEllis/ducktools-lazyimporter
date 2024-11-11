@@ -88,7 +88,7 @@ class CapturedFromImport:
 def make_capturing_import(captured_imports, globs, old_import):
     def _capturing_import(name, globals=None, locals=None, fromlist=(), level=0):
         # Something else tried to import - redirect to regular machinery
-        if globals and globals is not globs:
+        if globals is not globs:
             return old_import(name, globals, locals, fromlist, level)
 
         if fromlist and "*" in fromlist:
