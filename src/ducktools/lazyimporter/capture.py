@@ -36,10 +36,6 @@ class CapturedModuleImport:
         self.module_name = module_name
         self.placeholder = placeholder
 
-    @property
-    def final_element(self):
-        return self.module_name.split(".")[-1]
-
     def __eq__(self, other):
         if type(self) is type(other):
             return (
@@ -55,6 +51,10 @@ class CapturedModuleImport:
             f"placeholder={self.placeholder!r}"
             f")"
         )
+
+    @property
+    def final_element(self):
+        return self.module_name.split(".")[-1]
 
 
 class CapturedFromImport:
@@ -145,7 +145,7 @@ class capture_imports:
 
     def __enter__(self):
         if self.previous_import_func or self.import_func:
-            raise CaptureError("_CaptureContext is not re-entrant")
+            raise CaptureError("_CaptureContext is not reusable")
 
         # Store the old import function, create the new one and replace it
         self.previous_import_func = builtins.__import__
@@ -166,7 +166,6 @@ class capture_imports:
             raise CaptureError("Importer was replaced while in import block")
 
         builtins.__import__ = self.previous_import_func
-        self.import_func, self.previous_import_func = None, None
 
         # Trace names that are now in globals back to the actual import
         placeholders = {}
