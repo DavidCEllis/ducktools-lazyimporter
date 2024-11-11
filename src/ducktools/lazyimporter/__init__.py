@@ -745,7 +745,8 @@ def get_module_funcs(importer, module_name=None):
 
     If a module name is provided, attributes from the module will appear in the
     __dir__ function and __getattr__ will set the attributes on the module when
-    they are first accessed.
+    they are first accessed. If they are not provided, if the implementation
+    provides frame inspection it will be inferred.
 
     If a module already has __dir__ and/or __getattr__ functions it is probably
     better to use the result of dir(importer) and getattr(importer, name) to
@@ -760,6 +761,15 @@ def get_module_funcs(importer, module_name=None):
     :return: __getattr__ and __dir__ functions
     :rtype: tuple[types.FunctionType, types.FunctionType]
     """
+    # Try to get module name from the frame
+    if module_name is None:
+        try:
+            module_name = sys._getframemodulename(1) or "__main__"
+        except AttributeError:
+            try:
+                module_name = sys._getframe(1).f_globals.get("__name__", "__main__")
+            except (AttributeError, ValueError):
+                pass
 
     if module_name:
         mod = sys.modules[module_name]
