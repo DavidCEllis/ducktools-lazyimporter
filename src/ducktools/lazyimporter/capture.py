@@ -7,7 +7,7 @@ from . import ModuleImport, MultiFromImport, extend_imports
 
 class CaptureError(Exception):
     """
-    Error for capture speciific details
+    Error for capture specific details
     """
 
 
