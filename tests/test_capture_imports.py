@@ -1,7 +1,10 @@
 import builtins
+import sys
 
 from ducktools.lazyimporter import LazyImporter, ModuleImport, MultiFromImport
 from ducktools.lazyimporter.capture import capture_imports
+
+from example_modules import captures
 
 
 class TestBasicCaptures:
@@ -77,3 +80,16 @@ class TestBasicCaptures:
             from functools import partial as part, lru_cache as lru
 
         assert laz._imports == faked_imports
+
+
+class TestModuleCaptures:
+    def test_laz_values(self):
+        assert captures.laz._imports == [
+            ModuleImport("functools"),
+            MultiFromImport(
+                ".",
+                [("import_target", "import_target")])
+        ]
+
+    def test_real_import(self):
+        assert "example_modules.captures.func_import_target" in sys.modules
