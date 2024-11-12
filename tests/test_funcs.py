@@ -47,7 +47,9 @@ class TestModuleFuncs:
 
         _, dir_func = get_module_funcs(laz)
 
-        assert dir_func() == ["collections"]
+        dir_vals = sorted(["collections", *globals().keys()])
+
+        assert dir_func() == dir_vals
 
     def test_getattr_module_func(self):
         import example_modules.ex_othermod as ex_othermod  # noqa  # pyright: ignore

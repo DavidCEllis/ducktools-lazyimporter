@@ -141,14 +141,19 @@ class _ImporterGrouper:
     @overload
     def __get__(
         self, inst: LazyImporter, cls: type[LazyImporter] | None = ...
-    ) -> list[ImportBase]: ...
+    ) -> dict[str, ImportBase]: ...
     @staticmethod
-    def group_importers(inst: LazyImporter) -> list[ImportBase]: ...
+    def group_importers(inst: LazyImporter) -> dict[str, ImportBase]: ...
 
 class LazyImporter:
+    _imports: list[ImportBase]
+    _globals: dict | None
+
+    _importers: _ImporterGrouper
+
     def __init__(
         self,
-        imports: list[ImportBase],
+        imports: list[ImportBase] | None = ...,
         *,
         globs: dict[str, Any] | None = ...,
         eager_process: bool | None = ...,
@@ -170,3 +175,4 @@ def get_module_funcs(
     module_name: str | None = ...,
 ) -> tuple[types.FunctionType, types.FunctionType]: ...
 def force_imports(importer: LazyImporter) -> None: ...
+def extend_imports(importer: LazyImporter, imports: list[ImportBase]) -> None: ...

@@ -27,7 +27,7 @@ import abc
 import os
 import sys
 
-__version__ = "v0.6.0"
+__version__ = "v0.7.0"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
@@ -636,7 +636,7 @@ class LazyImporter:
 
     _importers = _ImporterGrouper()
 
-    def __init__(self, imports, *, globs=None, eager_process=None, eager_import=None):
+    def __init__(self, imports=None, *, globs=None, eager_process=None, eager_import=None):
         """
         Create a LazyImporter to import modules and objects when they are accessed
         on this importer object.
@@ -649,7 +649,7 @@ class LazyImporter:
         overridden by providing arguments here.
 
         :param imports: list of imports
-        :type imports: list[ImportBase]
+        :type imports: Optional[list[ImportBase]]
         :param globs: globals object for relative imports
         :type globs: dict[str, typing.Any]
         :param eager_process: filter and check the imports eagerly
@@ -658,13 +658,27 @@ class LazyImporter:
         :type eager_import: Optional[bool]
         """
         # Keep original imports for __repr__
-        self._imports = imports
-        self._globals = globs
+        self._imports = imports if imports is not None else []
 
-        if eager_process or (EAGER_PROCESS and eager_process is None):
+        self._globals = globs
+        if self._globals is None:
+            try:
+                # Try to get globals through frame if possible
+                self._globals = sys._getframe(1).f_globals
+            except (AttributeError, ValueError):
+                pass
+
+        self._eager_import = eager_import or (EAGER_IMPORT and eager_import is None)
+        self._eager_process = (
+            eager_process
+            or self._eager_import
+            or (EAGER_PROCESS and eager_process is None)
+        )
+
+        if self._eager_process:
             _ = self._importers
 
-        if eager_import or (EAGER_IMPORT and eager_import is None):
+        if self._eager_import:
             force_imports(self)
 
     def __getattr__(self, name):
@@ -731,7 +745,8 @@ def get_module_funcs(importer, module_name=None):
 
     If a module name is provided, attributes from the module will appear in the
     __dir__ function and __getattr__ will set the attributes on the module when
-    they are first accessed.
+    they are first accessed. If they are not provided, if the implementation
+    provides frame inspection it will be inferred.
 
     If a module already has __dir__ and/or __getattr__ functions it is probably
     better to use the result of dir(importer) and getattr(importer, name) to
@@ -746,6 +761,15 @@ def get_module_funcs(importer, module_name=None):
     :return: __getattr__ and __dir__ functions
     :rtype: tuple[types.FunctionType, types.FunctionType]
     """
+    # Try to get module name from the frame
+    if module_name is None:
+        try:
+            module_name = sys._getframemodulename(1) or "__main__"
+        except AttributeError:
+            try:
+                module_name = sys._getframe(1).f_globals.get("__name__", "__main__")
+            except (AttributeError, ValueError):
+                pass
 
     if module_name:
         mod = sys.modules[module_name]
@@ -785,3 +809,40 @@ def force_imports(importer):
     """
     for attrib_name in dir(importer):
         getattr(importer, attrib_name)
+
+
+# noinspection PyProtectedMember
+def extend_imports(importer, imports):
+    """
+    Add additional importers to a LazyImporter.
+
+    :param importer: LazyImporter to add imports
+    :param imports: Additional imports to add to the lazyimporter
+    """
+    # Delete current imports - dir only gives import names
+    redo_imports = []
+    for key in dir(importer):
+        try:
+            delattr(importer, key)
+        except AttributeError:
+            pass
+        else:
+            redo_imports.append(key)
+
+    # Clear out the importers cache
+    try:
+        del importer._importers
+    except AttributeError:
+        pass
+
+    # Add the new imports and do any necessary processing
+    importer._imports.extend(imports)
+
+    if importer._eager_process:
+        _ = importer._importers
+
+    if importer._eager_import:
+        force_imports(importer)
+    else:
+        for key in redo_imports:
+            getattr(importer, key)

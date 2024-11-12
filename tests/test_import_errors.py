@@ -157,13 +157,18 @@ class TestNameClash:
 class TestNoGlobals:
     def test_relative_module_noglobals(self):
         """
-        ModuleImport relative without globals
+        ModuleImport relative without globals where frame hacks are unavailable
         """
+        laz = LazyImporter(
+            [ModuleImport(".relative_module", asname="relative_module")],
+            eager_process=False,
+            eager_import=False,
+        )
+
+        laz._globals = None
+
         with pytest.raises(ValueError) as e:
-            laz = LazyImporter(
-                [ModuleImport(".relative_module", asname="relative_module")],
-                eager_process=True,
-            )
+            _ = laz._importers
 
         assert e.match(
             "Attempted to setup relative import without providing globals()."
@@ -173,11 +178,16 @@ class TestNoGlobals:
         """
         FromImport relative without globals
         """
+        laz = LazyImporter(
+            [FromImport(".relative_module", "attribute")],
+            eager_process=False,
+            eager_import=False,
+        )
+
+        laz._globals = None
+
         with pytest.raises(ValueError) as e:
-            laz = LazyImporter(
-                [FromImport(".relative_module", "attribute")],
-                eager_process=True,
-            )
+            _ = laz._importers
 
         assert e.match(
             "Attempted to setup relative import without providing globals()."

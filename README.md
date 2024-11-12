@@ -144,9 +144,9 @@ __all__ = [..., "useful_tool"]
 
 laz = LazyImporter(
     [FromImport(".submodule", "useful_tool")],
-    globs=globals(),  # If relative imports are used, globals() must be provided.
+    globs=globals(),  # globals() is used for relative imports, LazyImporter will attempt to infer it if not provided
 )
-__getattr__, __dir__ = get_module_funcs(laz, __name__)
+__getattr__, __dir__ = get_module_funcs(laz, __name__)  # __name__ will also be inferred if not given
 ```
 
 ## The import classes ##
@@ -251,6 +251,50 @@ except ImportError:
 ```
 
 when provided to a LazyImporter.
+
+## Experimental import statement capture ##
+
+There is an **experimental** mode that can capture import statements within a context block.
+
+This is currently in a separate 'capture' submodule but may be merged (or lazily imported itself) in the future.
+
+```python
+from ducktools.lazyimporter import LazyImporter, get_importer_state
+from ducktools.lazyimporter.capture import capture_imports
+
+laz = LazyImporter()
+
+with capture_imports(laz, auto_export=True):
+    # Inside this block, imports are captured and converted to lazy imports on laz
+    import functools
+    from collections import namedtuple as nt
+
+print(get_importer_state(laz))
+
+# Note that the captured imports are *not* available in the module namespace
+try:
+    functools
+except NameError:
+    print("functools is not here")
+```
+
+Imports are placed on the lazy importer object as with the explicit syntax. Unlike the regular
+syntax, these imports are exported by default.
+
+This works by replacing and restoring the builtin `__import__` function that is called by the
+import statement while in the block. 
+
+### Context Manager Caveats ###
+
+* This only supports Module imports and From imports
+  * The actual statement executes immediately and returns a placeholder, so a try/except can't work.
+* Imports triggered inside functions or classes while within the block will still occur eagerly
+* Imports triggered in other modules while within the block will still occur eagerly
+* The context manager must be used at the module level
+  * It will error if you use it inside a class or function scope
+* If other modules are also replacing `__import__` **simultaneously** this will probably fail.
+  * In a library you may not be able to guarantee this.
+  * Hopefully this will be resolvable.
 
 ## Environment Variables ##
 
