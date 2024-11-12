@@ -100,34 +100,38 @@ class capture_imports:
         Any `import <module> as <name>` or `from <module> import <attribute> as <name>`
         calls will be intercepted and assigned as lazy imports to the importer provided.
 
-        **This is intended to be used at module level** it currently technically works inside
-        function scopes but that is mostly to make it easier to write tests.
-
-        DO NOT RELY ON THIS WORKING INSIDE FUNCTIONS OR CLASSES!
+        **This only works at module level!**
 
         :param importer: LazyImporter instance
         :param auto_export: generate __getattr__ and __dir__ functions and add them to globals
                             in order to make the attributes available to import on the module.
         """
-        try:
-            sys._getframe  # noqa
-        except AttributeError:
-            raise CaptureError("Import capture requires sys._getframe")
-
         self.importer = importer
         self.auto_export = auto_export
 
+        # Global and locals checks
+        # This capture function only works at module level, so locals should be globals
+        # And they should match the level of the lazy importer
+        try:
+            frame = sys._getframe(1)  # noqa
+        except AttributeError:
+            raise CaptureError("Import capture requires sys._getframe")
+
+        globs = frame.f_globals
+        locs = frame.f_locals
+
+        if globs is not locs:
+            raise CaptureError("Import capture must be done at module level")
+
+        if globs is not importer._globals:
+            raise CaptureError("LazyImporter globals must match frame globals for capture_imports call")
+
+        self.globs = globs
         self.captured_imports = []
 
         # Place to store current and previous __import__ functions
         self.import_func = None
         self.previous_import_func = None
-
-        # Need the globals to check imports are for the appropriate module
-        # and for relative imports
-        self.globs = self.importer._globals
-        if self.globs is None:
-            raise CaptureError("Importer must have globals to capture import statements")
 
     def _make_capturing_import(self):
         def _capturing_import(name, globals=None, locals=None, fromlist=(), level=0):
@@ -222,56 +226,41 @@ class capture_imports:
         final_imports = []  # List of ModuleImport and MultiFromImport
         from_imports = {}  # dict of module_name: [(attrib, asname), ..]
 
-        # Imports within class/function bodies can appear in locals
-        # Retrace and collect the importers
-        locs = dict(sys._getframe(1).f_locals)
+        # Copy as the original may be mutated.
+        # `key` in this case will be the name the attribute was assigned
+        for key, value in self.globs.copy().items():
+            if isinstance(value, _ImportPlaceholder) and value.capturer is self:
+                # Store the initial attribute name and seek upwards through
+                # parent placeholders to try to find the original placeholder
+                attrib_name = value.attrib_name
+                while parent := value.placeholder_parent:
+                    value = parent
 
-        # If imports are done at module level, globs and locs will be equal
-        if locs != self.globs:
-            spaces = [locs, self.globs]
-        else:
-            spaces = [self.globs]
+                # Get the {attribute name: importer, ...} mappings
+                importer_map = placeholders[value]
 
-        for ns in spaces:
-            # Copy as the original may be mutated.
-            # `key` in this case will be the name the attribute was assigned
-            for key, value in ns.copy().items():
-                if isinstance(value, _ImportPlaceholder) and value.capturer is self:
-                    # Store the initial attribute name and seek upwards through
-                    # parent placeholders to try to find the original placeholder
-                    attrib_name = value.attrib_name
-                    while parent := value.placeholder_parent:
-                        value = parent
+                if attrib_name:
+                    # Retrieve the captured import statement from the mapping
+                    capture = importer_map[attrib_name]
 
-                    # Get the {attribute name: importer, ...} mappings
-                    importer_map = placeholders[value]
-
-                    if attrib_name:
-                        # Retrieve the captured import statement from the mapping
-                        capture = importer_map[attrib_name]
-
-                        # Convert it to a regular ModuleImport or store it to make
-                        # a MultiFromImport at the end.
-                        if isinstance(capture, CapturedModuleImport):
-                            importer = ModuleImport(
-                                capture.module_name,
-                                asname=key,
-                            )
-                            final_imports.append(importer)
-                        else:
-                            try:
-                                pairs = from_imports[capture.module_name]
-                            except KeyError:
-                                pairs = []
-                                from_imports[capture.module_name] = pairs
-
-                            pairs.append((attrib_name, key))
-
+                    # Convert it to a regular ModuleImport or store it to make
+                    # a MultiFromImport at the end.
+                    if isinstance(capture, CapturedModuleImport):
+                        importer = ModuleImport(
+                            capture.module_name,
+                            asname=key,
+                        )
+                        final_imports.append(importer)
+                    else:
                         try:
-                            del ns[key]
-                        except TypeError:
-                            # Can't delete via local namespace proxy - set to None
-                            ns[key] = None
+                            pairs = from_imports[capture.module_name]
+                        except KeyError:
+                            pairs = []
+                            from_imports[capture.module_name] = pairs
+
+                        pairs.append((attrib_name, key))
+
+                    del self.globs[key]
 
         final_imports.extend([MultiFromImport(k, v) for k, v in from_imports.items()])
 
