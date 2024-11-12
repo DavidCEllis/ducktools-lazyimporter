@@ -8,10 +8,16 @@ class CaptureError(Exception):
     ...
 
 class _ImportPlaceholder:
+    capturer: capture_imports
     attrib_name: str
     placeholder_parent: _ImportPlaceholder
 
-    def __init__(self, attrib_name: str | None = None, parent: _ImportPlaceholder | None = None) -> None: ...
+    def __init__(
+        self,
+        capturer: capture_imports,
+        attrib_name: str | None = None,
+        parent: _ImportPlaceholder | None = None
+    ) -> None: ...
     def __repr__(self) -> str: ...
     def __getattr__(self, item: str) -> _ImportPlaceholder: ...
 
