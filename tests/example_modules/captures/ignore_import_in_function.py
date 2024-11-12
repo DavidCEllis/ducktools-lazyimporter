@@ -11,4 +11,5 @@ laz = LazyImporter()
 with capture_imports(laz, auto_export=False):
     import collections
     inner_import = import_check()
-
+    class InnerClass:
+        import typing

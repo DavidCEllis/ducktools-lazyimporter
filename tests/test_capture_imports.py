@@ -210,9 +210,10 @@ class TestModuleCaptures:
         assert "example_modules.captures.func_import_target" in sys.modules
 
     def test_ignore_import_inside_function(self):
-        import functools
+        import functools, typing
         import example_modules.captures.ignore_import_in_function as mod
 
         assert mod.laz._imports == [ModuleImport("collections")]
 
-        assert mod.inner_import == functools
+        assert mod.inner_import is functools
+        assert mod.InnerClass.typing is typing
