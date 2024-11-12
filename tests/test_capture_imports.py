@@ -5,12 +5,9 @@ import unittest.mock as mock
 
 import pytest
 
-import ducktools.lazyimporter.capture
-
 from ducktools.lazyimporter import LazyImporter, ModuleImport, MultiFromImport
 from ducktools.lazyimporter.capture import capture_imports, CaptureError
 
-from example_modules import captures
 
 # Lazy Import capture must be at module level
 # So setup code is at module level and tests are interspersed
@@ -199,12 +196,15 @@ class TestExceptions:
 # Imports captured from other modules
 class TestModuleCaptures:
     def test_laz_values(self):
+        import functools
+        from example_modules import captures
         assert captures.laz._imports == [
             ModuleImport("functools"),
             MultiFromImport(
                 ".",
                 [("import_target", "import_target")])
         ]
+        assert captures.functools is functools
 
     def test_real_import(self):
         assert "example_modules.captures.func_import_target" in sys.modules
