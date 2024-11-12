@@ -1,8 +1,11 @@
 import builtins
 import sys
 
+import unittest.mock as mock
+
 import pytest
 
+import ducktools.lazyimporter.capture
 
 from ducktools.lazyimporter import LazyImporter, ModuleImport, MultiFromImport
 from ducktools.lazyimporter.capture import capture_imports, CaptureError
@@ -159,6 +162,38 @@ class TestExceptions:
     def test_raises_mismatch(self):
         with pytest.raises(CaptureError):
             import example_modules.captures.error_globs_mismatch
+
+    def test_raises_starimport(self):
+        with pytest.raises(CaptureError):
+            import example_modules.captures.error_star_import
+
+    def test_raises_reentry(self):
+        with pytest.raises(CaptureError):
+            import example_modules.captures.error_reuse
+
+    def test_raises_getattr_exists(self):
+        with pytest.raises(CaptureError):
+            import example_modules.captures.error_getattr_defined
+
+    def test_raises_dir_exists(self):
+        with pytest.raises(CaptureError):
+            import example_modules.captures.error_dir_defined
+
+    def test_import_replaced(self):
+        importer = builtins.__import__
+        with pytest.raises(CaptureError):
+            import example_modules.captures.error_import_replaced
+
+        assert builtins.__import__ is importer
+
+    def test_mock_no_getframe(self):
+        # Pretend not to have getframe to check error
+        with mock.patch("ducktools.lazyimporter.capture.sys") as sys_mock:
+            del sys_mock._getframe
+
+            laz = LazyImporter()
+            with pytest.raises(CaptureError):
+                cap = capture_imports(laz, auto_export=False)
 
 
 # Imports captured from other modules

@@ -48,7 +48,7 @@ class capture_imports:
     captured_imports: list[CapturedModuleImport | CapturedFromImport]
     import_func: _import_signature | None
     previous_import_func: _import_signature | None
-    globs: dict[str, Any]
+    globs: dict[str, Any] | None
 
     def __init__(self, importer: LazyImporter, auto_export: bool = True) -> None: ...
 

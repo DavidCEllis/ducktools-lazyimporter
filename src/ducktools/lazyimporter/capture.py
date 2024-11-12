@@ -1,5 +1,4 @@
 import builtins
-import importlib
 import sys
 
 from . import ModuleImport, MultiFromImport, extend_imports, get_module_funcs
@@ -21,9 +20,9 @@ class _ImportPlaceholder:
         self.attrib_name = attrib_name
         self.placeholder_parent = parent
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: nocover
         return (
-            f"{type(self).__name__}("
+            f"{self.__class__.__name__}("
             f"capturer={self.capturer!r}, "
             f"attrib_name={self.attrib_name!r}, "
             f"parent={self.placeholder_parent!r}"
@@ -44,15 +43,7 @@ class CapturedModuleImport:
         self.module_name = module_name
         self.placeholder = placeholder
 
-    def __eq__(self, other):
-        if type(self) is type(other):
-            return (
-                self.module_name == other.module_name
-                and self.placeholder == other.placeholder
-            )
-        return NotImplemented
-
-    def __repr__(self):
+    def __repr__(self):  # pragma: nocover
         return (
             f"{self.__class__.__name__}("
             f"module_name={self.module_name!r}, "
@@ -73,16 +64,7 @@ class CapturedFromImport:
         self.attrib_name = attrib_name
         self.placeholder = placeholder
 
-    def __eq__(self, other):
-        if type(self) is type(other):
-            return (
-                self.module_name == other.module_name
-                and self.placeholder == other.placeholder
-                and self.attrib_name == other.attrib_name
-            )
-        return NotImplemented
-
-    def __repr__(self):
+    def __repr__(self):  # pragma: nocover
         return (
             f"{self.__class__.__name__}("
             f"module_name={self.module_name!r}, "
@@ -113,20 +95,11 @@ class capture_imports:
         # This capture function only works at module level, so locals should be globals
         # And they should match the level of the lazy importer
         try:
-            frame = sys._getframe(1)  # noqa
+            sys._getframe  # noqa
         except AttributeError:
             raise CaptureError("Import capture requires sys._getframe")
 
-        globs = frame.f_globals
-        locs = frame.f_locals
-
-        if globs is not locs:
-            raise CaptureError("Import capture must be done at module level")
-
-        if globs is not importer._globals:
-            raise CaptureError("LazyImporter globals must match frame globals for capture_imports call")
-
-        self.globs = globs
+        self.globs = None
         self.captured_imports = []
 
         # Place to store current and previous __import__ functions
@@ -179,6 +152,25 @@ class capture_imports:
         if self.previous_import_func or self.import_func:
             raise CaptureError("_CaptureContext is not reusable")
 
+        # Only capture the frame when entering, this makes it possible to wrap
+        # capture_imports.
+        frame = sys._getframe(1)
+        globs = frame.f_globals
+        locs = frame.f_locals
+
+        if globs is not locs:
+            raise CaptureError("Import capture must be done at module level")
+
+        if globs is not self.importer._globals:
+            raise CaptureError("LazyImporter globals must match frame globals for capture_imports call")
+
+        if self.auto_export and (globs.get("__getattr__") or globs.get("__dir__")):
+            raise CaptureError(
+                "auto_export is not supported if __getattr__ or __dir__ is already defined on the module."
+            )
+
+        self.globs = globs
+
         # Store the old import function, create the new one and replace it
         self.previous_import_func = builtins.__import__
 
@@ -191,12 +183,12 @@ class capture_imports:
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Restore import state
         if builtins.__import__ is not self.import_func:
-            # If the importer has been changed while in use restore to a default
-            # importlib.__import__
-            builtins.__import__ = importlib.__import__
+            # If the importer has been changed while in use restore it anyway
+            # But error out
+            builtins.__import__ = self.previous_import_func
             raise CaptureError(
                 "Importer was replaced while in import block. "
-                "Restored to 'importlib.__import__'."
+                "Restored to state when block entered."
             )
 
         builtins.__import__ = self.previous_import_func
