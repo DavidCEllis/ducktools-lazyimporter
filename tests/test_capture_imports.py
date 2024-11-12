@@ -1,8 +1,11 @@
 import builtins
 import sys
 
+import pytest
+
+
 from ducktools.lazyimporter import LazyImporter, ModuleImport, MultiFromImport
-from ducktools.lazyimporter.capture import capture_imports
+from ducktools.lazyimporter.capture import capture_imports, CaptureError
 
 from example_modules import captures
 
@@ -140,6 +143,22 @@ def test_captured_multiple_names_separate_statements(laz=laz):
 
 
 del laz
+
+
+class TestExceptions:
+    def test_raises_in_function(self):
+        laz = LazyImporter()
+        with pytest.raises(CaptureError):
+            with capture_imports(laz, auto_export=False):
+                pass
+
+    def test_raises_in_class(self):
+        with pytest.raises(CaptureError):
+            import example_modules.captures.error_raises_in_class
+
+    def test_raises_mismatch(self):
+        with pytest.raises(CaptureError):
+            import example_modules.captures.error_globs_mismatch
 
 
 # Imports captured from other modules
