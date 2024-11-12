@@ -256,6 +256,8 @@ when provided to a LazyImporter.
 
 There is an **experimental** mode that can capture import statements within a context block.
 
+This is currently in a separate 'capture' submodule but may be merged (or lazily imported itself) in the future.
+
 ```python
 from ducktools.lazyimporter import LazyImporter, get_importer_state
 from ducktools.lazyimporter.capture import capture_imports
