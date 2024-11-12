@@ -10,7 +10,7 @@ from example_modules import captures
 class TestBasicCaptures:
     def test_importer_placed(self):
         laz = LazyImporter()
-        with capture_imports(laz) as capturer:
+        with capture_imports(laz, auto_export=False) as capturer:
             assert builtins.__import__ is capturer.import_func
 
     def test_module_capture(self):
@@ -20,7 +20,7 @@ class TestBasicCaptures:
 
         laz = LazyImporter()
 
-        with capture_imports(laz):
+        with capture_imports(laz, auto_export=False):
             import functools
 
         assert laz._imports == faked_imports
@@ -30,7 +30,7 @@ class TestBasicCaptures:
             ModuleImport("functools", "ft")
         ]
         laz = LazyImporter()
-        with capture_imports(laz):
+        with capture_imports(laz, auto_export=False):
             import functools as ft
 
         assert laz._imports == faked_imports
@@ -41,7 +41,7 @@ class TestBasicCaptures:
         ]
 
         laz = LazyImporter()
-        with capture_imports(laz):
+        with capture_imports(laz, auto_export=False):
             import importlib.util as util
 
         assert laz._imports == faked_imports
@@ -52,8 +52,19 @@ class TestBasicCaptures:
         ]
 
         laz = LazyImporter()
-        with capture_imports(laz):
+        with capture_imports(laz, auto_export=False):
             from functools import partial
+
+        assert laz._imports == faked_imports
+
+    def test_from_submod_capture(self):
+        faked_imports = [
+            MultiFromImport("importlib.util", [("spec_from_loader", "sfl")])
+        ]
+
+        laz = LazyImporter()
+        with capture_imports(laz, auto_export=False):
+            from importlib.util import spec_from_loader as sfl
 
         assert laz._imports == faked_imports
 
@@ -63,7 +74,7 @@ class TestBasicCaptures:
         ]
 
         laz = LazyImporter()
-        with capture_imports(laz):
+        with capture_imports(laz, auto_export=False):
             from functools import partial as part
 
         assert laz._imports == faked_imports
@@ -76,8 +87,23 @@ class TestBasicCaptures:
         ]
 
         laz = LazyImporter()
-        with capture_imports(laz):
+        with capture_imports(laz, auto_export=False):
             from functools import partial as part, lru_cache as lru
+
+        assert laz._imports == faked_imports
+
+    def test_captured_multiple_names_separate_statements(self):
+        faked_imports = [
+            MultiFromImport(
+                "functools",
+                [("partial", "part"), ("lru_cache", "lru")]
+            )
+        ]
+
+        laz = LazyImporter()
+        with capture_imports(laz, auto_export=False):
+            from functools import partial as part
+            from functools import lru_cache as lru
 
         assert laz._imports == faked_imports
 
