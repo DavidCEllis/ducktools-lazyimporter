@@ -41,19 +41,18 @@ _import_signature = Callable[
     Any,
 ]
 
-def make_capturing_import(
-    captured_imports: list[CapturedModuleImport | CapturedFromImport],
-    globs: dict[str, Any],
-    old_import: _import_signature,
-) -> _import_signature: ...
-
 class capture_imports:
     importer: LazyImporter
+    auto_export: bool
+
     captured_imports: list[CapturedModuleImport | CapturedFromImport]
     import_func: _import_signature | None
     previous_import_func: _import_signature | None
     globs: dict[str, Any]
 
-    def __init__(self, importer: LazyImporter) -> None: ...
+    def __init__(self, importer: LazyImporter, auto_export: bool = True) -> None: ...
+
+    def _make_capturing_import(self) -> _import_signature: ...
+
     def __enter__(self) -> Self: ...
     def __exit__(self, exc_type, exc_val, exc_tb) -> None: ...

@@ -2,7 +2,7 @@ import builtins
 import importlib
 import sys
 
-from . import ModuleImport, MultiFromImport, extend_imports
+from . import ModuleImport, MultiFromImport, extend_imports, get_module_funcs
 
 
 class CaptureError(Exception):
@@ -14,19 +14,26 @@ class CaptureError(Exception):
 # A replaced __import__ will still populate module globals (but not sys.modules)
 # After the fake imports are done, these will be used to remove the names from the module
 class _ImportPlaceholder:
-    __slots__ = ("attrib_name", "placeholder_parent")
+    __slots__ = ("attrib_name", "placeholder_parent", "capturer")
 
-    def __init__(self, attrib_name=None, parent=None):
+    def __init__(self, capturer, attrib_name=None, parent=None):
+        self.capturer = capturer
         self.attrib_name = attrib_name
         self.placeholder_parent = parent
 
     def __repr__(self):
-        return f"{type(self).__name__}(attrib_name={self.attrib_name!r}, parent={self.placeholder_parent!r})"
+        return (
+            f"{type(self).__name__}("
+            f"capturer={self.capturer!r}, "
+            f"attrib_name={self.attrib_name!r}, "
+            f"parent={self.placeholder_parent!r}"
+            f")"
+        )
 
     def __getattr__(self, item):
         # 'as' imports will be created from attribute access
         # store the parent so we can work backwards to the original import
-        return _ImportPlaceholder(attrib_name=item, parent=self)
+        return _ImportPlaceholder(capturer=self.capturer, attrib_name=item, parent=self)
 
 
 # Temporary importers needed for tracking back to assigned names
@@ -85,52 +92,30 @@ class CapturedFromImport:
         )
 
 
-def make_capturing_import(captured_imports, globs, old_import):
-    def _capturing_import(name, globals=None, locals=None, fromlist=(), level=0):
-        # Something else tried to import - redirect to regular machinery
-        if globals is not globs:
-            return old_import(name, globals, locals, fromlist, level)
-
-        if fromlist and "*" in fromlist:
-            raise CaptureError("Lazy importers cannot capture '*' imports.")
-
-        # Make a unique placeholder object
-        placeholder = _ImportPlaceholder(attrib_name=name.split(".")[0])
-
-        leading_dots = "." * level
-        module_name = f"{leading_dots}{name}"
-
-        if fromlist:
-            captured_imports.extend(
-                [
-                    CapturedFromImport(
-                        module_name=module_name,
-                        attrib_name=obj_name,
-                        placeholder=placeholder,
-                    )
-                    for obj_name in fromlist
-                ]
-            )
-        else:
-            captured_imports.append(
-                CapturedModuleImport(
-                    module_name=module_name,
-                    placeholder=placeholder,
-                )
-            )
-
-        return placeholder
-    return _capturing_import
-
-
 class capture_imports:
-    def __init__(self, importer):
+    def __init__(self, importer, auto_export=True):
+        """
+        Capture import statements executed within a block using this as a context manager
+
+        Any `import <module> as <name>` or `from <module> import <attribute> as <name>`
+        calls will be intercepted and assigned as lazy imports to the importer provided.
+
+        **This is intended to be used at module level** it currently technically works inside
+        function scopes but that is mostly to make it easier to write tests.
+
+        DO NOT RELY ON THIS WORKING INSIDE FUNCTIONS OR CLASSES!
+
+        :param importer: LazyImporter instance
+        :param auto_export: generate __getattr__ and __dir__ functions and add them to globals
+                            in order to make the attributes available to import on the module.
+        """
         try:
             sys._getframe  # noqa
         except AttributeError:
             raise CaptureError("Import capture requires sys._getframe")
 
         self.importer = importer
+        self.auto_export = auto_export
 
         self.captured_imports = []
 
@@ -144,6 +129,48 @@ class capture_imports:
         if self.globs is None:
             raise CaptureError("Importer must have globals to capture import statements")
 
+    def _make_capturing_import(self):
+        def _capturing_import(name, globals=None, locals=None, fromlist=(), level=0):
+            # Something else tried to import - redirect to regular machinery
+            if globals is not self.globs:
+                return self.previous_import_func(name, globals, locals, fromlist, level)
+
+            if fromlist and "*" in fromlist:
+                raise CaptureError("Lazy importers cannot capture '*' imports.")
+
+            # Make a unique placeholder object
+            placeholder = _ImportPlaceholder(
+                capturer=self,
+                attrib_name=name.split(".")[0],
+            )
+
+            leading_dots = "." * level
+            module_name = f"{leading_dots}{name}"
+
+            captured_imports = self.captured_imports
+            if fromlist:
+                captured_imports.extend(
+                    [
+                        CapturedFromImport(
+                            module_name=module_name,
+                            attrib_name=obj_name,
+                            placeholder=placeholder,
+                        )
+                        for obj_name in fromlist
+                    ]
+                )
+            else:
+                captured_imports.append(
+                    CapturedModuleImport(
+                        module_name=module_name,
+                        placeholder=placeholder,
+                    )
+                )
+
+            return placeholder
+
+        return _capturing_import
+
     def __enter__(self):
         if self.previous_import_func or self.import_func:
             raise CaptureError("_CaptureContext is not reusable")
@@ -151,11 +178,7 @@ class capture_imports:
         # Store the old import function, create the new one and replace it
         self.previous_import_func = builtins.__import__
 
-        self.import_func = make_capturing_import(
-            self.captured_imports,
-            self.globs,
-            self.previous_import_func,
-        )
+        self.import_func = self._make_capturing_import()
 
         builtins.__import__ = self.import_func
 
@@ -175,6 +198,17 @@ class capture_imports:
         builtins.__import__ = self.previous_import_func
 
         # Trace names that are now in globals back to the actual import
+
+        # `captured_imports` contains a list of CapturedImport objects containing
+        # the import module and attribute names alongside a placeholder that was returned
+        # by the original import
+        # The globals namespace now contains the final placeholders that were assigned.
+        # These may not be the original placeholders returned as 'from' imports for example
+        # will have accessed attributes from the placeholders.
+        # The logic is to trace the placeholder back to the parent, and then match that
+        # with the placeholders contained by the CapturedImports
+
+        # First create a mapping from placeholder instances to attribute names, to importers
         placeholders = {}
         for importer in self.captured_imports:
             importer_placeholders = placeholders.get(importer.placeholder, {})
@@ -200,33 +234,38 @@ class capture_imports:
 
         for ns in spaces:
             # Copy as the original may be mutated.
+            # `key` in this case will be the name the attribute was assigned
             for key, value in ns.copy().items():
-                if isinstance(value, _ImportPlaceholder):
+                if isinstance(value, _ImportPlaceholder) and value.capturer is self:
+                    # Store the initial attribute name and seek upwards through
+                    # parent placeholders to try to find the original placeholder
                     attrib_name = value.attrib_name
                     while parent := value.placeholder_parent:
                         value = parent
 
-                    try:
-                        importer_map = placeholders[value]
-                    except KeyError:
-                        continue
-                    else:
-                        if attrib_name:
-                            capture = importer_map[attrib_name]
-                            if isinstance(capture, CapturedModuleImport):
-                                importer = ModuleImport(
-                                    capture.module_name,
-                                    asname=key,
-                                )
-                                final_imports.append(importer)
-                            else:
-                                try:
-                                    pairs = from_imports[capture.module_name]
-                                except KeyError:
-                                    pairs = []
-                                    from_imports[capture.module_name] = pairs
+                    # Get the {attribute name: importer, ...} mappings
+                    importer_map = placeholders[value]
 
-                                pairs.append((attrib_name, key))
+                    if attrib_name:
+                        # Retrieve the captured import statement from the mapping
+                        capture = importer_map[attrib_name]
+
+                        # Convert it to a regular ModuleImport or store it to make
+                        # a MultiFromImport at the end.
+                        if isinstance(capture, CapturedModuleImport):
+                            importer = ModuleImport(
+                                capture.module_name,
+                                asname=key,
+                            )
+                            final_imports.append(importer)
+                        else:
+                            try:
+                                pairs = from_imports[capture.module_name]
+                            except KeyError:
+                                pairs = []
+                                from_imports[capture.module_name] = pairs
+
+                            pairs.append((attrib_name, key))
 
                         try:
                             del ns[key]
@@ -238,3 +277,10 @@ class capture_imports:
 
         # Add these imports to the importer
         extend_imports(self.importer, final_imports)
+
+        # Export to globals
+        if self.auto_export:
+            module_name = self.globs["__name__"]
+            getattr_func, dir_func = get_module_funcs(self.importer, module_name=module_name)
+            self.globs["__getattr__"] = getattr_func
+            self.globs["__dir__"] = dir_func
