@@ -109,7 +109,7 @@ class capture_imports:
     def _make_capturing_import(self):
         def _capturing_import(name, globals=None, locals=None, fromlist=(), level=0):
             # Something else tried to import - redirect to regular machinery
-            if globals is not self.globs:
+            if globals is not self.globs or globals != locals:
                 return self.previous_import_func(name, globals, locals, fromlist, level)
 
             if fromlist and "*" in fromlist:

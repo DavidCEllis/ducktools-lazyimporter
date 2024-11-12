@@ -208,3 +208,11 @@ class TestModuleCaptures:
 
     def test_real_import(self):
         assert "example_modules.captures.func_import_target" in sys.modules
+
+    def test_ignore_import_inside_function(self):
+        import functools
+        import example_modules.captures.ignore_import_in_function as mod
+
+        assert mod.laz._imports == [ModuleImport("collections")]
+
+        assert mod.inner_import == functools
