@@ -262,7 +262,7 @@ from ducktools.lazyimporter.capture import capture_imports
 
 laz = LazyImporter()
 
-with capture_imports(laz):
+with capture_imports(laz, auto_export=True):
     # Inside this block, imports are captured and converted to lazy imports on laz
     import functools
     from collections import namedtuple as nt
@@ -276,14 +276,23 @@ except NameError:
     print("functools is not here")
 ```
 
-Imports are placed on the lazy importer object as with the explicit syntax.
+Imports are placed on the lazy importer object as with the explicit syntax. Unlike the regular
+syntax, these imports are exported by default.
 
 This works by replacing and restoring the builtin `__import__` function that is called by the
 import statement while in the block. 
 
-**If other modules are also replacing `__import__` simultaneously this may cause issues.**
+### Context Manager Caveats ###
 
-Imports triggered in other modules while within the context block **should** work eagerly as usual.
+* This only supports Module imports and From imports
+  * The actual statement executes immediately and returns a placeholder, so a try/except can't work.
+* Imports triggered inside functions or classes while within the block will still occur eagerly
+* Imports triggered in other modules while within the block will still occur eagerly
+* The context manager must be used at the module level
+  * It will error if you use it inside a class or function scope
+* If other modules are also replacing `__import__` **simultaneously** this will probably fail.
+  * In a library you may not be able to guarantee this.
+  * Hopefully this will be resolvable.
 
 ## Environment Variables ##
 
