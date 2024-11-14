@@ -176,6 +176,14 @@ class TestExceptions:
         with pytest.raises(CaptureError):
             import example_modules.captures.error_dir_defined
 
+    def test_raises_submodule_import(self):
+        with pytest.raises(CaptureError):
+            import example_modules.captures.error_submodule_import
+
+    def test_raises_submodule_import_before_module(self):
+        with pytest.raises(CaptureError):
+            import example_modules.captures.error_submodule_import_before_module
+
     def test_import_replaced(self):
         importer = builtins.__import__
         with pytest.raises(CaptureError):
