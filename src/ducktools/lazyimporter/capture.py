@@ -233,7 +233,18 @@ class capture_imports:
 
                 if attrib_name:
                     # Retrieve the captured import statement from the mapping
-                    capture = importer_map[attrib_name]
+                    try:
+                        capture = importer_map[attrib_name]
+                    except KeyError:
+                        # Search the capture map to see if this is a submodule import
+                        for cap_imp in importer_map.values():
+                            if cap_imp.module_name.split(".")[0] == attrib_name:
+                                asname = cap_imp.module_name.split(".")[-1]
+                                raise CaptureError(
+                                    f"Submodule import `import {cap_imp.module_name}` requires assigned name: "
+                                    f"eg `import {cap_imp.module_name} as {asname}`"
+                                ) from None
+                        raise
 
                     # Convert it to a regular ModuleImport or store it to make
                     # a MultiFromImport at the end.
