@@ -12,6 +12,9 @@ class CaptureError(Exception):
 
 # A replaced __import__ will still populate module globals (but not sys.modules)
 # After the fake imports are done, these will be used to remove the names from the module
+# This intentionally does **not** define an '__eq__' or '__hash__'
+# Two placeholders are only identical if they are the same object as otherwise it's
+# not possible to trace imports back correctly.
 class _ImportPlaceholder:
     __slots__ = ("attrib_name", "placeholder_parent", "capturer")
 
@@ -218,6 +221,10 @@ class capture_imports:
         final_imports = []  # List of ModuleImport and MultiFromImport
         from_imports = {}  # dict of module_name: [(attrib, asname), ..]
 
+        # Create a set of imports - if there is an importer that is not used
+        # After all are matched then raise an exception
+        importer_set = set(self.captured_imports)
+
         # Copy as the original may be mutated.
         # `key` in this case will be the name the attribute was assigned
         for key, value in self.globs.copy().items():
@@ -233,7 +240,24 @@ class capture_imports:
 
                 if attrib_name:
                     # Retrieve the captured import statement from the mapping
-                    capture = importer_map[attrib_name]
+                    try:
+                        capture = importer_map[attrib_name]
+                    except KeyError:
+                        # Search the capture map to see if this is a submodule import
+                        for cap_imp in importer_map.values():
+                            if cap_imp.module_name.split(".")[0] == attrib_name:
+                                asname = cap_imp.module_name.split(".")[-1]
+                                raise CaptureError(
+                                    f"Submodule import `import {cap_imp.module_name}` requires assigned name: "
+                                    f"eg `import {cap_imp.module_name} as {asname}`"
+                                )
+
+                        # I don't know of a case where this can currently happen
+                        # But this is still an error so raise here
+                        raise  # pragma: nocover
+
+                    # Remove used importers from the set
+                    importer_set.discard(capture)
 
                     # Convert it to a regular ModuleImport or store it to make
                     # a MultiFromImport at the end.
@@ -253,6 +277,29 @@ class capture_imports:
                         pairs.append((attrib_name, key))
 
                     del self.globs[key]
+
+        # importer_set should be empty
+        # If it was not then there were import statements that did not have
+        # a matching name in globals.
+
+        if importer_set:
+            missing_module_imports = []
+            missing_from_imports = []
+            for imp in importer_set:
+                if isinstance(imp, CapturedModuleImport):
+                    missing_module_imports.append(repr(imp.module_name))
+                else:
+                    missing_from_imports.append(repr(imp.attrib_name))
+
+            if missing_module_imports:
+                err_list = ", ".join(missing_module_imports)
+                raise CaptureError(
+                    f"Unused module import(s) {err_list} not matched to a name in globals. "
+                    f"Possible duplicates or unaliased submodule import before module import."
+                )
+            else:
+                err_list = ", ".join(missing_from_imports)
+                raise CaptureError(f"Imports for name(s) {err_list} found, but unused.")
 
         final_imports.extend([MultiFromImport(k, v) for k, v in from_imports.items()])
 
