@@ -50,32 +50,27 @@ loading the modules that are only needed for heavier pathways. (It may also be w
 at what library you are using for CLI argument parsing.)
 
 I created this so I could use it on my own projects so here's an example of the performance
-of `ducktools-env` with and without lazy imports.
+of getting the help menu for `ducktools-env` with and without lazy imports.
 
 With lazy imports:
 ```commandline
-hyperfine -w3 -r20 "python -m ducktools.env run examples\inline\empty_312_env.py"
+hyperfine -w3 -r20 "python -m ducktools.env --help"
 ```
 ```
-Benchmark 1: python -m ducktools.env run examples\inline\empty_312_env.py
-  Time (mean ± σ):      87.1 ms ±   1.1 ms    [User: 52.2 ms, System: 22.4 ms]
-  Range (min … max):    85.2 ms …  89.1 ms    20 runs
+Benchmark 1: python -m ducktools.env --help
+  Time (mean ± σ):      41.4 ms ±   1.0 ms    [User: 21.1 ms, System: 15.9 ms]
+  Range (min … max):    40.0 ms …  44.1 ms    20 runs
 ```
 
 Without lazy imports (by setting `DUCKTOOLS_EAGER_IMPORT=true`):
 ```commandline
-hyperfine -w3 -r20 "python -m ducktools.env run examples\inline\empty_312_env.py"
+hyperfine -w3 -r20 "python -m ducktools.env --help"
 ```
 ```
-Benchmark 1: python -m ducktools.env run examples\inline\empty_312_env.py
-  Time (mean ± σ):     144.2 ms ±   1.4 ms    [User: 84.8 ms, System: 45.3 ms]
-  Range (min … max):   141.0 ms … 146.7 ms    20 runs
+Benchmark 1: python -m ducktools.env --help
+  Time (mean ± σ):     112.8 ms ±   2.6 ms    [User: 78.1 ms, System: 35.9 ms]
+  Range (min … max):   109.2 ms … 117.8 ms    20 runs
 ```
-
-In this case the module is searching for a matching python environment to run the script in, 
-the environment already exists and is cached so there is no need to load the code required 
-for constructing new environments. This timer includes the time to relaunch the correct
-python environment and run the (empty) script.
 
 ## Hasn't this already been done ##
 
@@ -292,6 +287,7 @@ import statement while in the block.
 * Imports triggered in other modules while within the block will still occur eagerly
 * The context manager must be used at the module level
   * It will error if you use it inside a class or function scope
+* As with the `ModuleImport` class, submodule imports without an assigned name are not supported.
 * If other modules are also replacing `__import__` **simultaneously** this will probably fail.
   * In a library you may not be able to guarantee this.
   * Hopefully this will be resolvable.
