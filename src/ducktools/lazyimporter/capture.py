@@ -250,8 +250,11 @@ class capture_imports:
                                 raise CaptureError(
                                     f"Submodule import `import {cap_imp.module_name}` requires assigned name: "
                                     f"eg `import {cap_imp.module_name} as {asname}`"
-                                ) from None
-                        raise
+                                )
+
+                        # I don't know of a case where this can currently happen
+                        # But this is still an error so raise here
+                        raise  # pragma: nocover
 
                     # Remove used importers from the set
                     importer_set.discard(capture)
@@ -275,6 +278,10 @@ class capture_imports:
 
                     del self.globs[key]
 
+        # importer_set should be empty
+        # If it was not then there were import statements that did not have
+        # a matching name in globals.
+
         if importer_set:
             missing_module_imports = []
             missing_from_imports = []
@@ -286,7 +293,10 @@ class capture_imports:
 
             if missing_module_imports:
                 err_list = ", ".join(missing_module_imports)
-                raise CaptureError(f"Unused module import(s) {err_list} not matched to name(s) in globals.")
+                raise CaptureError(
+                    f"Unused module import(s) {err_list} not matched to a name in globals. "
+                    f"Possible duplicates or unaliased submodule import before module import."
+                )
             else:
                 err_list = ", ".join(missing_from_imports)
                 raise CaptureError(f"Imports for name(s) {err_list} found, but unused.")
