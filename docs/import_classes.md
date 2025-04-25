@@ -35,7 +35,16 @@ import other_module as other_name
 import base_module.submodule as short_name
 ```
 
-when provided to a LazyImporter.
+when provided to a LazyImporter and accessed as follows:
+
+```python
+from ducktools.lazyimporter import LazyImporter
+laz = LazyImporter(modules)
+
+laz.module  # module
+laz.other_name  # other_module
+laz.short_name  # base_module.submodule
+```
 
 ### FromImport and MultiFromImport ###
 
@@ -61,7 +70,17 @@ from functools import partial as partfunc
 from collections import namedtuple, defaultdict as dd
 ```
 
-when provided to a LazyImporter.
+when provided to a LazyImporter and accessed as follows:
+
+```python
+from ducktools.lazyimporter import LazyImporter
+laz = LazyImporter(modules)
+
+laz.dataclass  # dataclasses.dataclass
+laz.partfunc  # functools.partial
+laz.namedtuple  # collections.namedtuple
+laz.dd  # collections.defaultdict
+```
 
 ### TryExceptImport ###
 
@@ -87,4 +106,13 @@ except ImportError:
     import tomli as tomllib
 ```
 
-when provided to a LazyImporter.
+when provided to a LazyImporter and accessed as follows:
+
+```python
+from ducktools.lazyimporter import LazyImporter
+laz = LazyImporter(modules)
+
+laz.tomllib  # tomllib / tomli
+laz.loads  # tomllib.loads / tomli.loads
+laz.tomli  # tomli / None
+```
