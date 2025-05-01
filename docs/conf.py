@@ -9,7 +9,7 @@ import ducktools.lazyimporter as lazyimporter
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Ducktools: Lazy Importer'
-copyright = '2023, David C Ellis'
+copyright = 'Copyright (c) 2023-2025 David C Ellis'
 author = 'David C Ellis'
 release = lazyimporter.__version__
 
