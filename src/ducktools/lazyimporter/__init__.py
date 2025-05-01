@@ -1,5 +1,5 @@
 # MIT License
-# Copyright (c) 2023-2024 David C Ellis
+# Copyright (c) 2023-2025 David C Ellis
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@ import abc
 import os
 import sys
 
-__version__ = "v0.7.2"
+__version__ = "v0.7.3"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
