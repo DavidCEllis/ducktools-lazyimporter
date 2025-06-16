@@ -29,9 +29,18 @@ dynamic = ['version']
 Homepage = "https://github.com/davidcellis/ducktools-lazyimporter"
 
 [project.optional-dependencies]
-testing = ["pytest", "pytest-cov"]
-docs = ["sphinx", "myst-parser", "sphinx_rtd_theme"]
-typing = ["mypy"]
+docs = [
+    "sphinx>=8.1", 
+    "myst-parser>=4.0", 
+    "sphinx_rtd_theme>=3.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+    "pytest-cov>=6.1",
+    "mypy>=1.16",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
