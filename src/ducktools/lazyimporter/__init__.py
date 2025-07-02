@@ -830,10 +830,8 @@ def extend_imports(importer, imports):
             redo_imports.append(key)
 
     # Clear out the importers cache
-    try:
-        del importer._importers
-    except AttributeError:
-        pass
+    # Earlier call to 'dir' will create this attribute
+    del importer._importers
 
     # Add the new imports and do any necessary processing
     importer._imports.extend(imports)

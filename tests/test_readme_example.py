@@ -12,13 +12,13 @@ class IfElseImporter(ImportBase):
         self.else_module_name = else_module_name
         self.asname = asname
 
-        if not self.asname.isidentifier():
+        if not self.asname.isidentifier():  # pragma: no cover
             raise ValueError(f"{self.asname} is not a valid python identifier.")
 
     def import_objects(self, globs=None):
         if globs is not None:
             package = globs.get('__name__')
-        else:
+        else:  # pragma: no cover
             package = None
 
         if self.condition:

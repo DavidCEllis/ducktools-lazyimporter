@@ -32,14 +32,14 @@ class TestDirectImports:
         assert "example_1" in sys.modules
 
         # Check the import is the correct object
-        import example_1  # noqa  # pyright: ignore
+        import example_1  # type: ignore
 
         assert example_1 is laz.example_1
 
     def test_module_import_asname(self):
         laz = LazyImporter([ModuleImport("example_1", asname="ex1")])
 
-        import example_1  # noqa  # pyright: ignore
+        import example_1  # type: ignore
 
         assert example_1 is laz.ex1
 
@@ -59,7 +59,7 @@ class TestDirectImports:
 
         assert laz.i == "example"
 
-        import example_2  # noqa  # pyright: ignore
+        import example_2  # type: ignore
 
         assert example_2.item is laz.i
 
@@ -147,8 +147,9 @@ class TestDirectImports:
         assert laz.name == "ex_submod"
 
     def test_try_fallback_import(self):
-        # noinspection PyUnresolvedReferences
-        import ex_mod
+        import ex_mod  # type: ignore
+        import ex_mod.ex_submod  # type: ignore
+
         test_obj = object()
 
         laz = LazyImporter(
@@ -174,6 +175,12 @@ class TestDirectImports:
         )
 
         assert laz.module_name is test_obj
+
+        laz = LazyImporter(
+            [TryFallbackImport("ex_mod.ex_submod", None, "ex_submod")]
+        )
+
+        assert laz.ex_submod == ex_mod.ex_submod
 
 
 class TestRelativeImports:
