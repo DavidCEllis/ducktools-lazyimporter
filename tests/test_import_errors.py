@@ -6,6 +6,7 @@ from ducktools.lazyimporter import (
     MultiFromImport,
     TryExceptImport,
     TryExceptFromImport,
+    TryFallbackImport,
     LazyImporter,
 )
 
@@ -38,18 +39,31 @@ def test_invalid_input():
     )
 
 
-def test_invalid_relative_import():
-    with pytest.raises(ValueError) as e:
-        _ = ModuleImport(".relative_module")
+class TestModuleImportErrors:
+    def test_invalid_relative_import(self):
+        with pytest.raises(ValueError) as e:
+            _ = ModuleImport(".relative_module")
 
-    assert e.match("Relative import '.relative_module' requires an assigned name.")
+        assert e.match("Relative import '.relative_module' requires an assigned name.")
 
 
-def test_invalid_submodule_import():
-    with pytest.raises(ValueError) as e:
-        _ = ModuleImport("importlib.util")
+    def test_invalid_relative_try_fallback(self):
+        with pytest.raises(ValueError) as e:
+            _ = TryFallbackImport(".relative_module", None)
 
-    assert e.match("Submodule import 'importlib.util' requires an assigned name.")
+        assert e.match("Relative import '.relative_module' requires an assigned name.")
+
+    def test_invalid_submodule_import(self):
+        with pytest.raises(ValueError) as e:
+            _ = ModuleImport("importlib.util")
+
+        assert e.match("Submodule import 'importlib.util' requires an assigned name.")
+
+    def test_invalid_submodule_try_fallback(self):
+        with pytest.raises(ValueError) as e:
+            _ = TryFallbackImport("importlib.util", None)
+
+        assert e.match("Submodule import 'importlib.util' requires an assigned name.")
 
 
 class TestInvalidIdentifiers:
@@ -86,6 +100,16 @@ class TestInvalidIdentifiers:
                 "altattribute",
                 "##invalid_identifier##",
             )
+        assert e.match(f"'##invalid_identifier##' is not a valid Python identifier.")
+
+    def test_tryfallbackimport_invalid(self):
+        with pytest.raises(ValueError) as e:
+            _ = TryFallbackImport(
+                "modname",
+                None,
+                "##invalid_identifier##",
+            )
+
         assert e.match(f"'##invalid_identifier##' is not a valid Python identifier.")
 
 
@@ -144,10 +168,22 @@ class TestNameClash:
         assert e.match("'matching_mod_name' used for multiple imports.")
 
     def test_reserved_name(self):
+        # Single asname
         with pytest.raises(ValueError) as e:
             laz = LazyImporter(
                 [
                     FromImport("mod1", "objname", "_importers"),
+                ],
+                eager_process=True,
+            )
+
+        assert e.match("'_importers' clashes with a LazyImporter internal name.")
+
+        # Multiple asnames
+        with pytest.raises(ValueError) as e:
+            laz = LazyImporter(
+                [
+                    MultiFromImport("mod1", [("objname", "_importers")]),
                 ],
                 eager_process=True,
             )

@@ -12,6 +12,7 @@ from ducktools.lazyimporter import (
     get_module_funcs,
     LazyImporter,
     force_imports,
+    extend_imports,
 )
 
 
@@ -77,3 +78,49 @@ def test_force_imports():
         "imported_attributes": {"name": "ex_mod"},
         "lazy_attributes": [],
     }
+
+class TestExtendImports:
+    def test_lazy_example(self):
+        import functools
+
+        laz = LazyImporter([ModuleImport("functools")])
+
+        extend_imports(laz, [ModuleImport("collections")])
+
+        state = get_importer_state(laz)
+        assert state["imported_attributes"] == {}
+        assert sorted(state["lazy_attributes"]) == sorted(["functools", "collections"])
+
+        _ = laz.functools
+
+        extend_imports(laz, [ModuleImport("itertools")])
+
+        state = get_importer_state(laz)
+        assert state["imported_attributes"] == {"functools": functools}
+        assert sorted(state["lazy_attributes"]) == sorted(["itertools", "collections"])
+
+    def test_eager_example(self):
+        import functools, itertools, collections
+
+        laz = LazyImporter([ModuleImport("functools")], eager_import=True)
+
+        extend_imports(laz, [ModuleImport("collections")])
+
+        state = get_importer_state(laz)
+        assert state["imported_attributes"] == {
+            "functools": functools,
+            "collections": collections
+        }
+        assert state["lazy_attributes"] == []
+
+        _ = laz.functools
+
+        extend_imports(laz, [ModuleImport("itertools")])
+
+        state = get_importer_state(laz)
+        assert state["imported_attributes"] == {
+            "functools": functools,
+            "itertools": itertools,
+            "collections": collections,
+        }
+        assert state["lazy_attributes"] == []

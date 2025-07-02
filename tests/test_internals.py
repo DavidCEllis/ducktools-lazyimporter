@@ -1,4 +1,7 @@
 import itertools
+from unittest.mock import patch
+
+import pytest
 
 from ducktools.lazyimporter import (
     ModuleImport,
@@ -6,6 +9,7 @@ from ducktools.lazyimporter import (
     MultiFromImport,
     TryExceptImport,
     TryExceptFromImport,
+    TryFallbackImport,
     _ImporterGrouper,
     LazyImporter,
 )
@@ -65,14 +69,24 @@ class TestImporterDunders:
         )
         assert te1 != te2
 
+    def test_equal_tryfallback(self):
+        tf1 = TryFallbackImport("tomllib", None)
+        tf2 = TryFallbackImport("tomllib", None)
+
+        assert tf1 == tf2
+
+        tf3 = TryFallbackImport("tomli", None)
+        assert tf1 != tf3
+
     def test_unequal_different_types(self):
         mod1 = ModuleImport("collections")
         from1 = FromImport("collections", "namedtuple")
         mf1 = MultiFromImport("collections", ["namedtuple", "defaultdict"])
         te1 = TryExceptImport("tomllib", "tomli", "tomllib")
         tef1 = TryExceptFromImport("tomllib", "loads", "tomli", "loads", "loads")
+        tf1 = TryFallbackImport("tomllib", None)
 
-        combs = itertools.combinations([mod1, from1, mf1, te1, tef1], 2)
+        combs = itertools.combinations([mod1, from1, mf1, te1, tef1, tf1], 2)
 
         for i1, i2 in combs:
             assert i1 != i2
@@ -131,6 +145,13 @@ class TestImporterDunders:
         )
 
         assert repr(tef1) == tef1str
+
+    def test_import_repr_tryfallback(self):
+        tf = TryFallbackImport("tomllib", None)
+
+        tfstr = "TryFallbackImport(module_name='tomllib', fallback=None, asname='tomllib')"
+
+        assert repr(tf) == tfstr
 
     def test_importer_repr(self):
         globs = globals()
@@ -241,3 +262,12 @@ def test_import_grouper_access():
     Test that the ImporterGrouper has been placed on the class
     """
     assert isinstance(LazyImporter._importers, _ImporterGrouper)
+
+
+def test_no_globs_without_getframe():
+    with patch("sys._getframe") as getframe_mock:
+        getframe_mock.side_effect = AttributeError("_getframe missing")
+
+        importer = LazyImporter()
+
+    assert importer._globals is None
