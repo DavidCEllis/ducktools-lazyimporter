@@ -24,6 +24,7 @@ Tools to make a lazy importer object that can be set up to import
 when first accessed.
 """
 import abc
+import io
 import os
 import sys
 
@@ -710,8 +711,10 @@ class LazyImporter:
             # Just do the import inline, performance doesn't matter as much for debugging
             import traceback
 
-            sys.stderr.write(f"Import triggered: {importer}\n")
-            sys.stderr.write("Origin:\n")
+            report = io.StringIO()
+
+            report.write(f"Import triggered: {importer}\n")
+            report.write("Origin:\n")
 
             i = 1
             try:
@@ -723,8 +726,13 @@ class LazyImporter:
 
             traceback.print_stack(
                 f=sys._getframe(i),
+                file=report
             )
-            sys.stderr.write("\n")
+            report.write("\n")
+
+            sys.stderr.write(report.getvalue())
+
+            report.close()
 
         import_data = importer.import_objects(globs=self._globals)
         for key, value in import_data.items():
