@@ -9,8 +9,9 @@ followed by the stack trace whenever a lazy importer first imports a module.
 
 Example Output:
 
-```
-Import triggered:
+```python
+Import triggered: ModuleImport(module_name='sqlite3', asname='sql')
+Origin:
   File "<frozen runpy>", line 198, in _run_module_as_main
   File "<frozen runpy>", line 88, in _run_code
   File "/home/ducksual/src/ducktools-env/src/ducktools/env/__main__.py", line 525, in <module>
@@ -29,5 +30,4 @@ Import triggered:
     with self.connection as con:
   File "/home/ducksual/src/ducktools-env/src/ducktools/env/_sqlclasses.py", line 82, in __enter__
     self.connection = _laz.sql.connect(self.db)
-
 ```
