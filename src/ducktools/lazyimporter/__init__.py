@@ -639,7 +639,6 @@ class LazyImporter:
 
     _eager_import: bool
     _eager_process: bool
-    _report_imports: bool
 
     _importers = _ImporterGrouper()
 

@@ -45,6 +45,7 @@ __all__: list[str] = [
 
 EAGER_PROCESS: bool
 EAGER_IMPORT: bool
+REPORT_IMPORTS: bool
 
 class ImportBase(metaclass=abc.ABCMeta):
     module_name: str
@@ -169,6 +170,9 @@ class _ImporterGrouper:
 class LazyImporter:
     _imports: list[ImportBase]
     _globals: dict | None
+
+    _eager_import: bool
+    _eager_process: bool
 
     _importers: _ImporterGrouper
 
