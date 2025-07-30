@@ -710,7 +710,8 @@ class LazyImporter:
             # Just do the import inline, performance doesn't matter as much for debugging
             import traceback
 
-            sys.stderr.write(f"Import triggered:\n")
+            sys.stderr.write(f"Import triggered: {importer}\n")
+            sys.stderr.write("Origin:\n")
 
             i = 1
             try:
