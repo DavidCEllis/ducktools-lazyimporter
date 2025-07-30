@@ -42,8 +42,10 @@ __all__ = [
     "force_imports",
 ]
 
+
 EAGER_PROCESS = os.environ.get("DUCKTOOLS_EAGER_PROCESS", "false").lower() != "false"
 EAGER_IMPORT = os.environ.get("DUCKTOOLS_EAGER_IMPORT", "false").lower() != "false"
+REPORT_IMPORTS = os.environ.get("DUCKTOOLS_REPORT_IMPORTS", "false").lower() != "false"
 
 
 class ImportBase(metaclass=abc.ABCMeta):
@@ -627,16 +629,27 @@ class _ImporterGrouper:
                     f"{imp!r} is not an instance of "
                     f"ModuleImport, FromImport, MultiFromImport or TryExceptImport"
                 )
+
         return importers
 
 
 class LazyImporter:
-    _imports: "list[ImportBase]"
-    _globals: "dict | None"
+    _imports: list[ImportBase]
+    _globals: dict | None
+
+    _eager_import: bool
+    _eager_process: bool
 
     _importers = _ImporterGrouper()
 
-    def __init__(self, imports=None, *, globs=None, eager_process=None, eager_import=None):
+    def __init__(
+        self,
+        imports=None,
+        *,
+        globs=None,
+        eager_process=None,
+        eager_import=None,
+    ):
         """
         Create a LazyImporter to import modules and objects when they are accessed
         on this importer object.
@@ -692,6 +705,25 @@ class LazyImporter:
             raise AttributeError(
                 f"{self.__class__.__name__!r} object has no attribute {name!r}"
             )
+
+        if REPORT_IMPORTS:
+            # Just do the import inline, performance doesn't matter as much for debugging
+            import traceback
+
+            sys.stderr.write(f"Import triggered:\n")
+
+            i = 1
+            try:
+                # sys._getframemodulename is 3.12+ only, replace this when dropping 3.11
+                while sys._getframe(i).f_globals.get("__name__", "__main__") == __name__:
+                    i += 1
+            except ValueError:
+                i = 1
+
+            traceback.print_stack(
+                f=sys._getframe(i),
+            )
+            sys.stderr.write("\n")
 
         import_data = importer.import_objects(globs=self._globals)
         for key, value in import_data.items():

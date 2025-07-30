@@ -31,13 +31,13 @@ laz = LazyImporter([
 ])
 
 def is_newer_version(version_no: str) -> bool:
-    """Check if a version number given indicates 
+    """Check if a version number given indicates
     a newer version than this package."""
-    this_ver = laz.Version(__version__) 
+    this_ver = laz.Version(__version__)
     new_ver = laz.Version(version_no)
     return new_ver > this_ver
 
-# Import will only occur when the function is called and 
+# Import will only occur when the function is called and
 # laz.Version is accessed
 print(is_newer_version("v0.2.0"))
 ```
@@ -83,9 +83,9 @@ Most implementations rely on stdlib modules that are themselves slow to import
 By contrast `ducktools-lazyimporter` only uses modules that python imports on launch.
 
 `ducktools-lazyimporter` does not attempt to propagate laziness, only the modules provided
-to `ducktools-lazyimporter` directly will be imported lazily. Any subdependencies of those 
-modules will be imported eagerly as if the import statement is placed where the 
-importer attribute is first accessed. 
+to `ducktools-lazyimporter` directly will be imported lazily. Any subdependencies of those
+modules will be imported eagerly as if the import statement is placed where the
+importer attribute is first accessed.
 
 ## Use Case ##
 
@@ -94,7 +94,7 @@ There are two main use cases this is designed for.
 ### Replacing in-line imports used in a module ###
 
 Sometimes it is useful to use tools from a module that has a significant import time.
-If this is part of a function/method that won't necessarily always be used it is 
+If this is part of a function/method that won't necessarily always be used it is
 common to delay the import and place it inside the function/method.
 
 Regular import within function:
@@ -147,7 +147,7 @@ __getattr__, __dir__ = get_module_funcs(laz, __name__)  # __name__ will also be 
 ## The import classes ##
 
 In all of these instances `modules` is intended as the first argument
-to `LazyImporter` and all attributes would be accessed from the 
+to `LazyImporter` and all attributes would be accessed from the
 `LazyImporter` instance and not in the global namespace.
 
 eg:
@@ -173,7 +173,7 @@ modules = [
 ]
 ```
 
-is equivalent to 
+is equivalent to
 
 ```python
 import module
@@ -305,7 +305,7 @@ Imports are placed on the lazy importer object as with the explicit syntax. Unli
 syntax, these imports are exported by default.
 
 This works by replacing and restoring the builtin `__import__` function that is called by the
-import statement while in the block. 
+import statement while in the block.
 
 ### Context Manager Caveats ###
 
@@ -333,10 +333,19 @@ will be performed eagerly on instance creation (this will also force processing 
 
 If they are unset this is equivalent to being set to False.
 
-If there is a lazy importer where it is known this will not work 
+If there is a lazy importer where it is known this will not work
 (for instance if it is managing a circular dependency issue)
-these can be overridden for an importer by passing values to `eager_process` and/or 
+these can be overridden for an importer by passing values to `eager_process` and/or
 `eager_import` arguments to the `LazyImporter` constructer as keyword arguments.
+
+## Logging imports ##
+
+If you are finding that a certain module is always being imported and wish to investigate
+how the module is being imported, there is now an environment variable that can be set
+to print the stack to stderr whenever an import is triggered.
+
+Set `DUCKTOOLS_REPORT_IMPORTS=true` in your environment and you will see `Import triggered:`
+followed by the stack trace whenever a lazy importer first imports a module.
 
 ## How does it work ##
 
@@ -357,14 +366,14 @@ class SpecificLazyImporter:
             from functools import partial
             setattr(self, name, partial)
             return partial
-        
+
         raise AttributeError(...)
 
 laz = SpecificLazyImporter()
 ```
 
 The first time the attribute is accessed the import is done and the output
-is stored on the instance, so repeated access immediately gets the desired 
+is stored on the instance, so repeated access immediately gets the desired
 object and the import mechanism is only invoked once.
 
 (The actual `__getattr__` function uses a dictionary lookup and delegates importing
