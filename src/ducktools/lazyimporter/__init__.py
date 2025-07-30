@@ -27,7 +27,7 @@ import abc
 import os
 import sys
 
-__version__ = "v0.8.0"
+__version__ = "v0.8.1"
 __all__ = [
     "LazyImporter",
     "ModuleImport",
