@@ -44,11 +44,11 @@ class TestModuleFuncs:
         assert getattr_func("collections") is collections
 
     def test_dir_func(self):
-        laz = LazyImporter([ModuleImport("collections")])
+        laz = LazyImporter([ModuleImport("fake_module")])
 
         _, dir_func = get_module_funcs(laz)
 
-        dir_vals = sorted(["collections", *globals().keys()])
+        dir_vals = sorted({"fake_module", *globals().keys()})
 
         assert dir_func() == dir_vals
 
@@ -78,6 +78,7 @@ def test_force_imports():
         "imported_attributes": {"name": "ex_mod"},
         "lazy_attributes": [],
     }
+
 
 class TestExtendImports:
     def test_lazy_example(self):
