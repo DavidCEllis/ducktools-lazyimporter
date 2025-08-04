@@ -229,3 +229,12 @@ class TestModuleCaptures:
 
         assert mod.inner_import is functools
         assert mod.InnerClass.typing is typing
+
+    def test_dir_extras(self):
+        # Test that the exported dir contains methods defined after the lazyimporter
+
+        import example_modules.captures.extras_in_dir as mod  # noqa  # pyright: ignore
+
+        assert "functools" in dir(mod)  # from the importer
+        assert "extra_func" in dir(mod)  # defined after the importer
+        assert "LTUAE" in dir(mod)  # defined after the importer

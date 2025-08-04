@@ -814,7 +814,6 @@ def get_module_funcs(importer, module_name=None):
 
     if module_name:
         mod = sys.modules[module_name]
-        dir_data = sorted(list(mod.__dict__.keys()) + dir(importer))
 
         def __getattr__(name):
             try:
@@ -826,14 +825,13 @@ def get_module_funcs(importer, module_name=None):
             setattr(mod, name, attr)
             return attr
 
+        def __dir__():
+            keyset = set(mod.__dict__.keys())
+            keyset.update(dir(importer))
+            return sorted(keyset)
+
     else:
-        dir_data = dir(importer)
-
-        def __getattr__(name):
-            return getattr(importer, name)
-
-    def __dir__():
-        return dir_data
+        raise ValueError("module name was not provided and could not be found from inspection")
 
     return __getattr__, __dir__
 
