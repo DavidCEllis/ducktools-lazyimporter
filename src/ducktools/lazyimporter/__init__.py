@@ -24,7 +24,6 @@ Tools to make a lazy importer object that can be set up to import
 when first accessed.
 """
 import abc
-import io
 import os
 import sys
 
@@ -708,8 +707,9 @@ class LazyImporter:
             )
 
         if REPORT_IMPORTS:
-            # Just do the import inline, performance doesn't matter as much for debugging
+            # Just do the imports inline, performance doesn't matter as much for debugging
             import traceback
+            import io
 
             report = io.StringIO()
 
