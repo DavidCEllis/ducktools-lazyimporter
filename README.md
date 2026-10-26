@@ -12,6 +12,10 @@ This form of import works by creating a specific LazyImporter object that lazily
 imports modules or module attributes when the module or attribute is accessed
 on the object.
 
+> [!NOTE]  
+> With Python 3.15 adding native lazy imports no new features will be added 
+> and this package will be archived when dropping support for Python 3.14.
+
 ## How to download ##
 
 Download from PyPI:
